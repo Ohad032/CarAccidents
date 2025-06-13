@@ -5,10 +5,18 @@ date: "2025-06-13"
 ---
 
 ```{r}
+install.packages("MASS")
+install.packages("nnet")  # אם לא מותקן
+
+```
+
+
+```{r}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-
+library(MASS)
+library(nnet)
 ```
 
 ```{r}
@@ -22,25 +30,36 @@ notification_cols <- c("FRNT_COLLISION_WARNING", "LANE_DEPARTURE_WARNING", "BLIN
 
 set.seed(123)  # לשחזור תוצאה, אפשר לשנות או להסיר
 
+
+CarsAccidentsData <- CarsAccidentsData %>%
+  mutate(
+    DEFORMED_LEVEL = case_when(
+      DEFORMEDNAME == "No Damage" ~ 1,
+      DEFORMEDNAME == "Minor Damage" ~ 2,
+      DEFORMEDNAME == "Functional Damage" ~ 3,
+      DEFORMEDNAME == "Disabling Damage" ~ 4,
+      TRUE ~ NA_real_ 
+    )
+  )
+
+
 CleanedData <- CarsAccidentsData %>%
   mutate(across(all_of(notification_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
 
-CleanedData <- CleanedData %>% select(-AUTO_CRASH_NOTIFICATION)
+CleanedData <- CleanedData %>% dplyr::select(-AUTO_CRASH_NOTIFICATION)
 CleanedData$notification_count <- rowSums(CleanedData[, notification_cols] == 1)
-
-CleanedData
-
 ```
 
 ```{r}
 
 FilteredData <- CleanedData %>%
   filter(
-    DR_DRINK == 0,                                # הנהג לא שתה
-    VSURCONDNAME == "Dry",                        # הכביש לא רטוב
-    !grepl("(?i)Yes", SPEEDRELNAME),              # לא עבר את המהירות
-    !grepl("(?i)Unknown", SPEEDRELNAME),          # לא ידוע אם עבר את המהירות
-    L_STATUSNAME == "Valid"             # רק נהגים עם רישיון
+    DR_DRINK == 0,                                
+    VSURCONDNAME == "Dry",                        
+    !grepl("(?i)Yes", SPEEDRELNAME),              
+    !grepl("(?i)Unknown", SPEEDRELNAME),          
+    L_STATUSNAME == "Valid",
+    DEFORMEDNAME %in% c("Disabling Damage", "Functional Damage", "Minor Damage", "No Damage")
   )
 ```
 
@@ -130,13 +149,116 @@ ggplot(final, aes(x = combo, y = normalized)) +
   theme_minimal()
 ```
 
+
+Ohad's first way for the regression model, i took from the NotificationsPrecent the precentges of the chance that each system will be in the vehicle and i make it the coeffeintion.
 ```{r}
 
+notification_precent_data = read.csv("data/NotificationsPrecent.csv")
+
+no_systems_coef = notification_precent_data[2,"X0"] / 100
+just_lane_coef = notification_precent_data[2,"Just.Lane"] / 100
+just_front_coef = notification_precent_data[2,"Just.Front"] / 100
+just_blind_coef = notification_precent_data[2,"Just.Blind"] / 100
 
 
+FilteredData <- FilteredData %>%
+  mutate(
+    systems_sum = FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION,
+    Total_Score = 
+      FRNT_COLLISION_WARNING * just_front_coef +
+      LANE_DEPARTURE_WARNING * just_lane_coef +
+      BLIND_SPOT_DETECTION * just_blind_coef +
+      if_else(systems_sum == 0, no_systems_coef, 0)
+  )
 
 
+model_score <- polr(as.factor(DEFORMED_LEVEL) ~ Total_Score, data = FilteredData, Hess = TRUE)
+summary(model_score)
 
 
 ```
+
+
+Ohad's second way, like we know from the regression course
+```{r}
+
+
+# נניח שכאן כבר הגדרת את DEFORMED_LEVEL כ-1–4
+
+# שלב 1: כל מערכת בנפרד
+model_front <- polr(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING, data = FilteredData, Hess = TRUE)
+model_lane <- polr(as.factor(DEFORMED_LEVEL) ~ LANE_DEPARTURE_WARNING, data = FilteredData, Hess = TRUE)
+model_blind <- polr(as.factor(DEFORMED_LEVEL) ~ BLIND_SPOT_DETECTION, data = FilteredData, Hess = TRUE)
+
+# שלב 2: זוגות של מערכות
+model_front_lane <- polr(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING, data = FilteredData, Hess = TRUE)
+model_front_blind <- polr(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + BLIND_SPOT_DETECTION, data = FilteredData, Hess = TRUE)
+model_lane_blind <- polr(as.factor(DEFORMED_LEVEL) ~ LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION, data = FilteredData, Hess = TRUE)
+
+# שלב 3: כל שלושת המערכות
+model_all <- polr(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION, data = FilteredData, Hess = TRUE)
+
+# תצוגה מסודרת של כל הסיכומים
+cat("Model: Front only\n")
+print(summary(model_front))
+cat("\n\nModel: Lane only\n")
+print(summary(model_lane))
+cat("\n\nModel: Blind only\n")
+print(summary(model_blind))
+
+cat("\n\nModel: Front + Lane\n")
+print(summary(model_front_lane))
+cat("\n\nModel: Front + Blind\n")
+print(summary(model_front_blind))
+cat("\n\nModel: Lane + Blind\n")
+print(summary(model_lane_blind))
+
+cat("\n\nModel: All three systems\n")
+print(summary(model_all))
+
+
+```
+
+
+Ohad's thirds way, the 
+```{r}
+
+# שלב 1: כל מערכת בנפרד
+model_front <- multinom(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING, data = FilteredData)
+model_lane  <- multinom(as.factor(DEFORMED_LEVEL) ~ LANE_DEPARTURE_WARNING, data = FilteredData)
+model_blind <- multinom(as.factor(DEFORMED_LEVEL) ~ BLIND_SPOT_DETECTION, data = FilteredData)
+
+# שלב 2: זוגות
+model_front_lane  <- multinom(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING, data = FilteredData)
+model_front_blind <- multinom(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + BLIND_SPOT_DETECTION, data = FilteredData)
+model_lane_blind  <- multinom(as.factor(DEFORMED_LEVEL) ~ LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION, data = FilteredData)
+
+# שלב 3: כל שלושת המערכות
+model_all <- multinom(as.factor(DEFORMED_LEVEL) ~ FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION, data = FilteredData)
+
+cat("Model: Front only\n")
+print(summary(model_front))
+
+cat("\n\nModel: Lane only\n")
+print(summary(model_lane))
+
+cat("\n\nModel: Blind only\n")
+print(summary(model_blind))
+
+cat("\n\nModel: Front + Lane\n")
+print(summary(model_front_lane))
+
+cat("\n\nModel: Front + Blind\n")
+print(summary(model_front_blind))
+
+cat("\n\nModel: Lane + Blind\n")
+print(summary(model_lane_blind))
+
+cat("\n\nModel: All three systems\n")
+print(summary(model_all))
+
+```
+
+
+
 
