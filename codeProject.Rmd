@@ -1,0 +1,132 @@
+---
+title: "codeProject"
+output: html_document
+date: "2025-06-13"
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+```
+
+```{r}
+
+CarsAccidentsData = read.csv("data/CarsAccidentsData.csv")
+notification_cols <- c("FRNT_COLLISION_WARNING", "LANE_DEPARTURE_WARNING", "BLIND_SPOT_DETECTION")
+
+```
+
+```{r}
+
+set.seed(123)  # לשחזור תוצאה, אפשר לשנות או להסיר
+
+CleanedData <- CarsAccidentsData %>%
+  mutate(across(all_of(notification_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
+
+CleanedData <- CleanedData %>% select(-AUTO_CRASH_NOTIFICATION)
+CleanedData$notification_count <- rowSums(CleanedData[, notification_cols] == 1)
+
+CleanedData
+
+```
+
+```{r}
+
+FilteredData <- CleanedData %>%
+  filter(
+    DR_DRINK == 0,                                # הנהג לא שתה
+    VSURCONDNAME == "Dry",                        # הכביש לא רטוב
+    !grepl("(?i)Yes", SPEEDRELNAME),              # לא עבר את המהירות
+    !grepl("(?i)Unknown", SPEEDRELNAME),          # לא ידוע אם עבר את המהירות
+    L_STATUSNAME == "Valid"             # רק נהגים עם רישיון
+  )
+```
+
+```{r}
+# Summarize number of accidents by notification_count
+accidents_by_notifications <- FilteredData %>%
+  group_by(notification_count) %>%
+  summarise(num_accidents = n())
+
+# Plot the results
+ggplot(accidents_by_notifications, aes(x = factor(notification_count), y = num_accidents)) +
+  geom_col() +
+  labs(
+    title = "Number of Accidents by Number of Safety Systems",
+    x = "Number of Safety Systems",
+    y = "Number of Accidents"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+# Expected proportions under binomial distribution (n=3, p=0.5)
+expected_probs <- dbinom(0:3, size = 3, prob = 0.5)
+
+# Add expected probabilities to the summary table
+accidents_by_notifications$expected_prob <- expected_probs[accidents_by_notifications$notification_count + 1]  # +1 because R is 1-indexed
+
+# Normalize actual accident counts by expected probabilities
+accidents_by_notifications$normalized_accidents <- accidents_by_notifications$num_accidents / accidents_by_notifications$expected_prob
+
+# Plot the normalized accidents
+ggplot(accidents_by_notifications, aes(x = factor(notification_count), y = normalized_accidents)) +
+  geom_col() +
+  labs(
+    title = "Normalized Accident Counts by Number of Safety Systems",
+    x = "Number of Safety Systems",
+    y = "Normalized Accident Count"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+
+# Step 2: create combo column like "101"
+FilteredData$combo <- apply(FilteredData[, notification_cols], 1, paste0, collapse = "")
+
+# Step 3: count accidents per combination
+combo_summary <- FilteredData %>%
+  group_by(combo) %>%
+  summarise(num_accidents = n(), .groups = "drop")
+
+# Step 4: generate all possible combinations and theoretical probabilities (assuming p = 0.5)
+p <- 0.5
+all_combos <- expand.grid(BLIND_SPOT_DETECTION = c(0, 1),
+                          FRNT_COLLISION_WARNING = c(0, 1),
+                          LANE_DEPARTURE_WARNING = c(0, 1)) %>%
+  mutate(combo = paste0(BLIND_SPOT_DETECTION, FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING)) %>%
+  rowwise() %>%
+  mutate(expected_prob = prod(c_across(everything()[1:3]) * p + (1 - c_across(everything()[1:3])) * (1 - p))) %>%
+  ungroup()
+
+# Step 5: merge with real data and normalize
+final <- left_join(all_combos[, c("combo", "expected_prob")], combo_summary, by = "combo") %>%
+  mutate(num_accidents = replace_na(num_accidents, 0),
+         normalized = num_accidents / expected_prob)
+
+# Step 6: plot raw accident counts
+ggplot(final, aes(x = combo, y = num_accidents)) +
+  geom_col() +
+  labs(
+    title = "Accidents per Safety System Combination",
+    x = "Safety System Combination (BFD)",
+    y = "Number of Accidents"
+  ) +
+  theme_minimal()
+
+# Step 7: plot normalized accident counts
+ggplot(final, aes(x = combo, y = normalized)) +
+  geom_col() +
+  labs(
+    title = "Normalized Accidents per Safety System Combination",
+    x = "Safety System Combination (BFD)",
+    y = "Normalized Accident Count"
+  ) +
+  theme_minimal()
+```
+
