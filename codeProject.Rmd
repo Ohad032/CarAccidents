@@ -59,7 +59,8 @@ FilteredData <- CleanedData %>%
     !grepl("(?i)Yes", SPEEDRELNAME),              
     !grepl("(?i)Unknown", SPEEDRELNAME),          
     L_STATUSNAME == "Valid",
-    DEFORMEDNAME %in% c("Disabling Damage", "Functional Damage", "Minor Damage", "No Damage")
+    DEFORMEDNAME %in% c("Disabling Damage", "Functional Damage", "Minor Damage", "No Damage"),
+    TYPE_OF_COLLIOSION %in% c("Angle", "Front-to-Front", "Front-to-Rear","Rear-to-Side","Sideswipe - Same Direction", "Sideswipe - Opposite Direction")
   )
 ```
 
@@ -148,5 +149,6 @@ ggplot(final, aes(x = combo, y = normalized)) +
   ) +
   theme_minimal()
 ```
+
 
 
