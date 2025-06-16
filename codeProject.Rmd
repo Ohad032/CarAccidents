@@ -5,18 +5,11 @@ date: "2025-06-13"
 ---
 
 ```{r}
-install.packages("MASS")
-install.packages("nnet")  # אם לא מותקן
-
-```
-
-
-```{r}
 library(dplyr)
 library(ggplot2)
 library(tidyr)
-library(MASS)
-library(nnet)
+library(broom)
+library(knitr)
 ```
 
 ```{r}
@@ -165,6 +158,123 @@ ggplot(final, aes(x = combo, y = num_accidents)) +
   ) +
   theme_minimal()
 ```
+
+
+```{r}
+
+# שלב 1: סינון תאונות חמורות בלבד
+FilteredData_serious <- FilteredData %>%
+  filter(DEFORMEDNAME == "Disabling Damage")
+
+# שלב 2: יצירת קומבו ובחירת קומבינציות עם 1–2 מערכות
+FilteredData_serious$combo <- apply(FilteredData_serious[, notification_cols], 1, paste0, collapse = "")
+valid_combos <- c("001", "010", "100", "110", "101", "011")
+
+FilteredData_combo <- FilteredData_serious %>%
+  filter(combo %in% valid_combos)
+
+# שלב 3: אחוזים וכמויות באוכלוסייה
+empirical_probs <- c(
+  "001" = 0.0812,
+  "010" = 0.0812,
+  "100" = 0.0615,
+  "110" = 0.0641,
+  "101" = 0.0338,
+  "011" = 0.1122
+)
+
+empirical_counts <- c(
+  "001" = 260,
+  "010" = 627,
+  "100" = 475,
+  "110" = 495,
+  "101" = 261,
+  "011" = 866
+)
+
+# שלב 4: נרמול לפי גודל קבוצה
+FilteredData_combo <- FilteredData_combo %>%
+  mutate(
+    combo_prob  = empirical_probs[combo],
+    combo_count = empirical_counts[combo],
+    weight      = 1 / combo_prob
+  )
+
+# שלב 5: מודלים עם interactions ו־weights
+model_front <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
+                     FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
+                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
+                     LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
+                   data = FilteredData_combo, family = "binomial", weights = weight)
+
+model_side <- glm(grepl("Side", TYPE_OF_COLLIOSION) ~
+                    FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
+                    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
+                    FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
+                    LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
+                  data = FilteredData_combo, family = "binomial", weights = weight)
+
+model_angle <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
+                     FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
+                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
+                     LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
+                   data = FilteredData_combo, family = "binomial", weights = weight)
+
+
+```
+
+```{r}
+# שלב 6: חילוץ מקדמים
+extract_coefs <- function(model, crash_type) {
+  tidy(model) %>%
+    mutate(CrashType = crash_type)
+}
+
+coef_table <- bind_rows(
+  extract_coefs(model_front, "Front"),
+  extract_coefs(model_side,  "Side"),
+  extract_coefs(model_angle, "Angle")
+) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    term = recode(term,
+      "FRNT_COLLISION_WARNING" = "Front Warning",
+      "LANE_DEPARTURE_WARNING" = "Lane Warning",
+      "BLIND_SPOT_DETECTION" = "Blind Spot",
+      "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane",
+      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION" = "Front + Blind",
+      "LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION" = "Lane + Blind"
+    ),
+    lower = estimate - 1.96 * std.error,
+    upper = estimate + 1.96 * std.error
+  )
+
+significant <- coef_table %>%
+  filter(p.value < 0.05)
+
+kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
+
+```
+
+
+```{r}
+ggplot(coef_table, aes(x = term, y = estimate, color = CrashType)) +
+  geom_point(position = position_dodge(width = 0.6), size = 3) +
+  geom_errorbar(aes(ymin = lower, ymax = upper),
+                width = 0.2, position = position_dodge(width = 0.6)) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(
+    title = "Coefficient Plot (Serious Crashes, Normalized)",
+    x = "System or Combination",
+    y = "Coefficient (Log-Odds)",
+    color = "Crash Type"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 15, hjust = 1))
+```
+
 
 
 
