@@ -276,5 +276,141 @@ ggplot(coef_table, aes(x = term, y = estimate, color = CrashType)) +
 ```
 
 
+```{r}
 
+model_front_lane_extended <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
+  FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
+  FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
+  FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
+  FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT,
+  data = FilteredData_combo,
+  family = "binomial", weights = weight)
+
+
+model_front_blind_extended <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
+  FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
+  FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE +
+  FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:DYNAMIC_BRAKE_SUPPORT,
+  data = FilteredData_combo,
+  family = "binomial", weights = weight)
+
+model_angle_front_extended <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
+  FRNT_COLLISION_WARNING +
+  FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
+  FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
+  FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT +
+  FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:NHTSA_ESC +
+  FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC +
+  FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC,
+  data = FilteredData_combo,
+  family = "binomial", weights = weight)
+
+
+```
+
+
+```{r}
+
+# פונקציה לשליפת מקדמים
+extract_coefs_extended <- function(model, crash_type) {
+  tidy(model) %>%
+    mutate(CrashType = crash_type)
+}
+
+# יצירת טבלה אחידה
+coef_table_extended <- bind_rows(
+  extract_coefs_extended(model_front_lane_extended, "Front"),
+  extract_coefs_extended(model_front_blind_extended, "Front"),
+  extract_coefs_extended(model_angle_front_extended, "Angle")
+) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(
+    term = recode(term,
+      "FRNT_COLLISION_WARNING" = "Front Warning",
+      "LANE_DEPARTURE_WARNING" = "Lane Warning",
+      "BLIND_SPOT_DETECTION" = "Blind Spot",
+      "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane",
+      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION" = "Front + Blind",
+      "LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION" = "Lane + Blind",
+      "CRASH_IMMINENT_BRAKE" = "CIB",
+      "DYNAMIC_BRAKE_SUPPORT" = "DBS",
+      "NHTSA_ESC" = "ESC"
+      # תוכל להוסיף עוד לפי הצורך
+    ),
+    lower = estimate - 1.96 * std.error,
+    upper = estimate + 1.96 * std.error
+  )
+
+# סינון לפי מובהקות
+significant_extended <- coef_table_extended %>%
+  filter(p.value < 0.05)
+
+# תצוגה
+kable(significant_extended, digits = 3, caption = "Significant Effects in Extended Models (p < 0.05)")
+```
+
+
+```{r}
+# סינון קיצונים – להציג רק מקדמים בטווח נורמליlibrary(stringr)
+#install.packages("stringr")
+library(stringr)
+shorten_term <- function(term) {
+  parts <- unlist(strsplit(term, ":"))
+  initials <- sapply(parts, function(p) {
+    if (grepl("FRNT", p)) return("F")
+    if (grepl("LANE", p)) return("L")
+    if (grepl("BLIND", p)) return("B")
+    if (grepl("CRASH", p)) return("C")
+    if (grepl("DYNAMIC", p)) return("D")
+    if (grepl("ESC", p)) return("E")
+    return("")  # אם לא זיהינו — נשמיט
+  })
+  paste0(initials, collapse = "")
+}
+
+coef_table_filtered <- coef_table_extended %>%
+  filter(estimate > -10, estimate < 10) %>%
+  mutate(
+  term_short = sapply(term, shorten_term),
+  term_unique = paste0(term_short, "_", CrashType)  # 👈 מייצר מזהה ייחודי
+)
+
+
+# שמור רק מובהקים
+significant_extended <- coef_table_filtered %>%
+  filter(p.value < 0.05) %>%
+  mutate(
+    term_short = factor(term_short, levels = unique(term_short))  # סדר לפי הופעה
+  )
+
+# הכנת הגרף
+dodge <- position_dodge2(width = 0.8)
+
+p <- ggplot(significant_extended, aes(
+  x = term_unique,
+  y = estimate,
+  color = CrashType,
+  group = CrashType
+)) +
+  geom_point(position = dodge, size = 4) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, position = dodge) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  labs(
+    title = "Significant Coefficients by System Combination",
+    x = "System Code (Initials)",
+    y = "Coefficient (Log-Odds)",
+    color = "Crash Type"
+  ) +
+  theme_minimal(base_size = 16) +
+  theme(
+    axis.text.x = element_text(size = 14, angle = 25, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 18),
+    legend.text = element_text(size = 14),
+    legend.title = element_text(size = 14)
+  )
+
+# שמירה לקובץ ברוחב מוגדל
+ggsave("coef_plot_significant_wide.png", plot = p, width = 24, height = 6, dpi = 300)
+```
 
