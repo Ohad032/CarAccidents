@@ -39,7 +39,7 @@ CarsAccidentsData <- CarsAccidentsData %>%
 CleanedData <- CarsAccidentsData %>%
   mutate(across(all_of(notification_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
 
-CleanedData <- CleanedData %>% dplyr::select(-AUTO_CRASH_NOTIFICATION)
+CleanedData <- CleanedData %>% dplyr::select(-any_of(c("AUTO_CRASH_NOTIFICATION", "NHTSA_ESC")))
 CleanedData$notification_count <- rowSums(CleanedData[, notification_cols] == 1)
 ```
 
@@ -61,17 +61,17 @@ FilteredData <- CleanedData %>%
 ```{r}
 # Step 1: Define actual vehicle counts and proportions per notification count
 group_sizes <- c(
-  `0` = 2519,
-  `1` = 1362,
-  `2` = 1622,
-  `3` = 2215
+  `0` = 2423,
+  `1` = 1280,
+  `2` = 1486,
+  `3` = 1441
 )
 
 group_probs <- c(
-  `0` = 0.3264,
-  `1` = 0.1765,
-  `2` = 0.2102,
-  `3` = 0.2870
+  `0` = 0.3655,
+  `1` = 0.1931,
+  `2` = 0.2241,
+  `3` = 0.2173
 )
 
 # Step 2: Summarize accidents by notification_count
@@ -97,6 +97,7 @@ ggplot(accidents_by_notifications, aes(x = factor(notification_count), y = num_a
 
 ```
 
+
 ```{r}
 
 # Step 2: Create 'combo' column (e.g., "101")
@@ -117,35 +118,37 @@ all_combos <- expand.grid(
 
 # Step 5: Define actual counts and percentages per combination
 empirical_counts <- c(
-  "000" = 2519,
-  "001" = 260,
-  "010" = 627,
-  "100" = 475,
-  "110" = 495,
-  "101" = 261,
-  "011" = 866,
-  "111" = 2215
+  "000" = 2423,
+  "001" = 446,
+  "010" = 277,
+  "100" = 557,
+  "110" = 782,
+  "101" = 487,
+  "011" = 217,
+  "111" = 1441
 )
 
 empirical_probs <- c(
-  "000" = 0.3264,
-  "001" = 0.0812,
-  "010" = 0.0812,
-  "100" = 0.0615,
-  "110" = 0.0641,
-  "101" = 0.0338,
-  "011" = 0.1122,
-  "111" = 0.2870
+  "000" = 0.3655,
+  "001" = 0.0673,
+  "010" = 0.0418,
+  "100" = 0.084,
+  "110" = 0.1179,
+  "101" = 0.0735,
+  "011" = 0.0327,
+  "111" = 0.2173
 )
 
 # Step 6: Merge all data and compute normalized metrics
 final <- left_join(all_combos, combo_summary, by = "combo") %>%
+  #filter(!(combo %in% c("000", "111"))) %>%   # <<< מסיר את 000 ו־111
   mutate(
     num_accidents = replace_na(num_accidents, 0),
     group_size = empirical_counts[combo],
     group_prob = empirical_probs[combo],
     accidents_per_vehicle = num_accidents / group_size,
-    accidents_per_percent = num_accidents / group_prob
+    accidents_per_percent = num_accidents / group_prob,
+    num_active_systems = stringr::str_count(combo, "1")
   )
 
 # Step 7: Plot actual number of accidents (Y = num_accidents)
@@ -299,8 +302,6 @@ model_angle_front_extended <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
   FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
   FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
   FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT +
-  FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:NHTSA_ESC +
-  FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC +
   FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC,
   data = FilteredData_combo,
   family = "binomial", weights = weight)
@@ -310,107 +311,78 @@ model_angle_front_extended <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
 
 
 ```{r}
-
-# פונקציה לשליפת מקדמים
-extract_coefs_extended <- function(model, crash_type) {
+extract_coefs <- function(model, crash_type) {
   tidy(model) %>%
     mutate(CrashType = crash_type)
 }
 
-# יצירת טבלה אחידה
-coef_table_extended <- bind_rows(
-  extract_coefs_extended(model_front_lane_extended, "Front"),
-  extract_coefs_extended(model_front_blind_extended, "Front"),
-  extract_coefs_extended(model_angle_front_extended, "Angle")
+coef_table <- bind_rows(
+  extract_coefs(model_front_lane_extended, "Front"),
+  extract_coefs(model_front_blind_extended, "Front"),
+  extract_coefs(model_angle_front_extended, "Angle")
 ) %>%
   filter(term != "(Intercept)") %>%
   mutate(
     term = recode(term,
-      "FRNT_COLLISION_WARNING" = "Front Warning",
-      "LANE_DEPARTURE_WARNING" = "Lane Warning",
-      "BLIND_SPOT_DETECTION" = "Blind Spot",
       "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane",
-      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION" = "Front + Blind",
-      "LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION" = "Lane + Blind",
-      "CRASH_IMMINENT_BRAKE" = "CIB",
-      "DYNAMIC_BRAKE_SUPPORT" = "DBS",
-      "NHTSA_ESC" = "ESC"
-      # תוכל להוסיף עוד לפי הצורך
+      "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Lane + Crash_Imminent",
+      "FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT" = "Front + Dynamic_Brake",
+      "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC" = "Front + Crash_Imminent + Dynamic_Brake + ESC",
+      .default = term  # חשוב! שמירה על ערכים שלא צוינו
     ),
     lower = estimate - 1.96 * std.error,
     upper = estimate + 1.96 * std.error
   )
 
-# סינון לפי מובהקות
-significant_extended <- coef_table_extended %>%
-  filter(p.value < 0.05)
+significant <- coef_table %>%
+  filter(p.value < 0.05 & p.value > 1e-5) 
 
-# תצוגה
-kable(significant_extended, digits = 3, caption = "Significant Effects in Extended Models (p < 0.05)")
+kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
 ```
+
 
 
 ```{r}
-# סינון קיצונים – להציג רק מקדמים בטווח נורמליlibrary(stringr)
-#install.packages("stringr")
-library(stringr)
-shorten_term <- function(term) {
-  parts <- unlist(strsplit(term, ":"))
-  initials <- sapply(parts, function(p) {
-    if (grepl("FRNT", p)) return("F")
-    if (grepl("LANE", p)) return("L")
-    if (grepl("BLIND", p)) return("B")
-    if (grepl("CRASH", p)) return("C")
-    if (grepl("DYNAMIC", p)) return("D")
-    if (grepl("ESC", p)) return("E")
-    return("")  # אם לא זיהינו — נשמיט
-  })
-  paste0(initials, collapse = "")
-}
-
-coef_table_filtered <- coef_table_extended %>%
-  filter(estimate > -10, estimate < 10) %>%
-  mutate(
-  term_short = sapply(term, shorten_term),
-  term_unique = paste0(term_short, "_", CrashType)  # 👈 מייצר מזהה ייחודי
+effects_df <- data.frame(
+  Comparison = c("Front -> +Dynamic Brake", "Front+Lane -> +Crash Imminent"),
+  From = c(0.149, 0.168),
+  To = c(-0.105, -0.264),
+  CrashType = c("Angle", "Front")
 )
 
-
-# שמור רק מובהקים
-significant_extended <- coef_table_filtered %>%
-  filter(p.value < 0.05) %>%
+# חישוב אחוז ירידה
+effects_df <- effects_df %>%
   mutate(
-    term_short = factor(term_short, levels = unique(term_short))  # סדר לפי הופעה
+    PercentChange = (From - To) / abs(From) * 100
   )
 
-# הכנת הגרף
-dodge <- position_dodge2(width = 0.8)
+# ציור הגרף
+colors <- c("Front" = "firebrick", "Angle" = "steelblue3")
 
-p <- ggplot(significant_extended, aes(
-  x = term_unique,
-  y = estimate,
-  color = CrashType,
-  group = CrashType
-)) +
-  geom_point(position = dodge, size = 4) +
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, position = dodge) +
-  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
-  labs(
-    title = "Significant Coefficients by System Combination",
-    x = "System Code (Initials)",
-    y = "Coefficient (Log-Odds)",
-    color = "Crash Type"
+p <- ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  geom_text(
+    aes(label = paste0(round(PercentChange, 1), "%")),
+    vjust = -0.3,  # מזיז למעלה קלות אבל שומר על אנכיות
+    size = 5
   ) +
-  theme_minimal(base_size = 16) +
+  scale_fill_manual(values = colors) +
+  labs(
+    title = "Percent Risk Reduction from Adding Safety Systems",
+    y = "Reduction (%)",
+    x = "System Addition",
+    fill = "Crash Type"
+  ) +
+  theme_minimal(base_size = 14) +
   theme(
-    axis.text.x = element_text(size = 14, angle = 25, hjust = 1),
-    axis.text.y = element_text(size = 12),
-    plot.title = element_text(face = "bold", hjust = 0.5, size = 18),
-    legend.text = element_text(size = 14),
-    legend.title = element_text(size = 14)
+    axis.text.x = element_text(angle = 15, hjust = 1),
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    legend.title = element_text(size = 13),
+    legend.text = element_text(size = 12)
   )
 
-# שמירה לקובץ ברוחב מוגדל
-ggsave("coef_plot_significant_wide.png", plot = p, width = 24, height = 6, dpi = 300)
+# הצגה בפועל
+ggsave("plot.png", plot = p, bg="white")
 ```
+
 
