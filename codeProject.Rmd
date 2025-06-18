@@ -11,6 +11,7 @@ library(tidyr)
 library(broom)
 library(knitr)
 library(readr)
+library(scales)
 ```
 
 ```{r}
