@@ -16,6 +16,7 @@ library(knitr)
 
 CarsAccidentsData = read.csv("data/CarsAccidentsData.csv")
 notification_cols <- c("FRNT_COLLISION_WARNING", "LANE_DEPARTURE_WARNING", "BLIND_SPOT_DETECTION")
+active_systems_cols <- c("CRASH_IMMINENT_BRAKE", "DYNAMIC_BRAKE_SUPPORT", "NHTSA_ESC")
 
 ```
 
@@ -26,7 +27,10 @@ set.seed(123)  # לשחזור תוצאה, אפשר לשנות או להסיר
 CleanedData <- CarsAccidentsData %>%
   mutate(across(all_of(notification_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
 
-CleanedData <- CleanedData %>% dplyr::select(-any_of(c("AUTO_CRASH_NOTIFICATION", "NHTSA_ESC")))
+CleanedData <- CleanedData %>%
+  mutate(across(all_of(active_systems_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
+
+CleanedData <- CleanedData %>% dplyr::select(-any_of(c("AUTO_CRASH_NOTIFICATION", "ARS")))
 CleanedData$notification_count <- rowSums(CleanedData[, notification_cols] == 1)
 ```
 
@@ -88,11 +92,11 @@ ggplot(accidents_by_notifications, aes(x = factor(notification_count), y = num_a
 
 ```{r}
 # Step 2: Create 'combo' column (e.g., "101")
-FilteredData$combo <- apply(FilteredData[, notification_cols], 1, paste0, collapse = "")
+FilteredData$combo_alert_systems <- apply(FilteredData[, notification_cols], 1, paste0, collapse = "")
 
 # Step 3: Count number of accidents per combo
 combo_summary <- FilteredData %>%
-  group_by(combo) %>%
+  group_by(combo_alert_systems) %>%
   summarise(num_accidents = n(), .groups = "drop")
 
 # Step 4: Define all possible combinations of safety systems
@@ -101,10 +105,10 @@ all_combos <- expand.grid(
   FRNT_COLLISION_WARNING = c(0, 1),
   LANE_DEPARTURE_WARNING = c(0, 1)
 ) %>%
-  mutate(combo = paste0(BLIND_SPOT_DETECTION, FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING))
+  mutate(combo_alert_systems = paste0(BLIND_SPOT_DETECTION, FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING))
 
 # Step 5: Define actual counts and percentages per combination
-empirical_counts <- c(
+empirical_counts_alert_systems <- c(
   "000" = 2423,
   "001" = 446,
   "010" = 277,
@@ -115,7 +119,7 @@ empirical_counts <- c(
   "111" = 1441
 )
 
-empirical_probs <- c(
+empirical_probs_alert_systems <- c(
   "000" = 0.3655,
   "001" = 0.0673,
   "010" = 0.0418,
@@ -127,19 +131,19 @@ empirical_probs <- c(
 )
 
 # Step 6: Merge all data and compute normalized metrics
-final <- left_join(all_combos, combo_summary, by = "combo") %>%
+final <- left_join(all_combos, combo_summary, by = "combo_alert_systems") %>%
   #filter(!(combo %in% c("000", "111"))) %>%   # <<< מסיר את 000 ו־111
   mutate(
     num_accidents = replace_na(num_accidents, 0),
-    group_size = empirical_counts[combo],
-    group_prob = empirical_probs[combo],
+    group_size = empirical_counts_alert_systems[combo_alert_systems],
+    group_prob = empirical_probs_alert_systems[combo_alert_systems],
     accidents_per_vehicle = num_accidents / group_size,
     accidents_per_percent = num_accidents / group_prob,
-    num_active_systems = stringr::str_count(combo, "1")
+    num_active_systems = stringr::str_count(combo_alert_systems, "1")
   )
 
 # Step 7: Plot actual number of accidents (Y = num_accidents)
-ggplot(final, aes(x = combo, y = num_accidents)) +
+ggplot(final, aes(x = combo_alert_systems, y = num_accidents)) +
   geom_col(fill = "steelblue") +
   labs(
     title = "Number of Accidents by Safety System Combination",
@@ -153,11 +157,11 @@ ggplot(final, aes(x = combo, y = num_accidents)) +
 ```{r}
 
 # Step 2: Create 'combo' column (e.g., "101")
-FilteredData$combo <- apply(FilteredData[, notification_cols], 1, paste0, collapse = "")
+FilteredData$combo_active_systems <- apply(FilteredData[, active_systems_cols], 1, paste0, collapse = "")
 
 # Step 3: Count number of accidents per combo
 combo_summary <- FilteredData %>%
-  group_by(combo) %>%
+  group_by(combo_active_systems) %>%
   summarise(num_accidents = n(), .groups = "drop")
 
 # Step 4: Define all possible combinations of safety systems
@@ -166,10 +170,10 @@ all_combos <- expand.grid(
   DYNAMIC_BRAKE_SUPPORT = c(0, 1),
   NHTSA_ESC = c(0, 1)
 ) %>%
-  mutate(combo = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC))
+  mutate(combo_active_systems = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC))
 
 # Step 5: Define actual counts and percentages per combination
-empirical_counts <- c(
+empirical_counts_active_systems <- c(
   "000" = 1701,
   "001" = 1570,
   "010" = 454,
@@ -180,7 +184,7 @@ empirical_counts <- c(
   "111" = 48
 )
 
-empirical_probs <- c(
+empirical_probs_active_systems <- c(
   "000" = 0.2566,
   "001" = 0.2368,
   "010" = 0.0685,
@@ -192,39 +196,36 @@ empirical_probs <- c(
 )
 
 # Step 6: Merge all data and compute normalized metrics
-final <- left_join(all_combos, combo_summary, by = "combo") %>%
+final <- left_join(all_combos, combo_summary, by = "combo_active_systems") %>%
   #filter(!(combo %in% c("000", "111"))) %>%   # <<< מסיר את 000 ו־111
   mutate(
     num_accidents = replace_na(num_accidents, 0),
-    group_size = empirical_counts[combo],
-    group_prob = empirical_probs[combo],
+    group_size = empirical_counts_active_systems[combo_active_systems],
+    group_prob = empirical_probs_active_systems[combo_active_systems],
     accidents_per_vehicle = num_accidents / group_size,
     accidents_per_percent = num_accidents / group_prob,
-    num_active_systems = stringr::str_count(combo, "1")
+    num_active_systems = stringr::str_count(combo_active_systems, "1")
   )
 
 # Step 7: Plot actual number of accidents (Y = num_accidents)
-ggplot(final, aes(x = combo, y = num_accidents)) +
+ggplot(final, aes(x = combo_active_systems, y = num_accidents)) +
   geom_col(fill = "steelblue") +
   labs(
-    title = "Number of Accidents by Safety System Combination",
-    x = "Safety System Combination (BFL)",
+    title = "Number of Accidents by Active System Combination",
+    x = "Active System Combination (CDE)",
     y = "Number of Accidents"
   ) +
   theme_minimal()
 ```
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(readr)
 
 # קריאת הקובץ
-data <- read_csv("data/car_safety_combinations_final_correct.csv")
+car_all_systems_data <- read_csv("data/car_safety_combinations_final_correct.csv")
 
 # יצירת עמודת קומבינציה (3 ביטים של התראה + _ + 3 ביטים של אקטיביות)
-data <- data %>%
+car_all_systems_data <- car_all_systems_data %>%
   mutate(
-    combo = paste0(
+    combo_all_systems = paste0(
       FRNT_COLLISION_WARNING,
       LANE_DEPARTURE_WARNING,
       BLIND_SPOT_DETECTION,
@@ -236,16 +237,16 @@ data <- data %>%
   )
 
 # סידור לפי כמות תאונות מהגבוה לנמוך
-data <- data %>%
+car_all_systems_data <- car_all_systems_data %>%
   arrange(desc(Count))
 
 # חלוקה ל־4 קבוצות של 16 קומבינציות כל אחת
-data$group <- rep(1:4, each = 16)
+car_all_systems_data$group <- rep(1:4, each = 16)
 
 # ציור גרף עבור כל קבוצה
 for (g in 1:4) {
-  chunk <- filter(data, group == g)
-  p <- ggplot(chunk, aes(x = combo, y = Count)) +
+  chunk <- filter(car_all_systems_data, group == g)
+  p <- ggplot(chunk, aes(x = combo_all_systems, y = Count)) +
     geom_col(fill = "steelblue") +
     labs(
       title = paste("Number of Accidents by Alert + Active Combination (Group", g, ")"),
@@ -261,17 +262,11 @@ for (g in 1:4) {
 ```
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(readr)
-
-# שלב 1: קריאת הקובץ
-data <- read_csv("data/car_safety_combinations_final_correct.csv")
 
 # שלב 2: יצירת מחרוזת קומבינציה 6 ספרות (3 של התראה + 3 של אקטיביות)
-data <- data %>%
+car_all_systems_data <- car_all_systems_data %>%
   mutate(
-    combo = paste0(
+    combo_all_systems = paste0(
       FRNT_COLLISION_WARNING,
       LANE_DEPARTURE_WARNING,
       BLIND_SPOT_DETECTION,
@@ -282,11 +277,11 @@ data <- data %>%
   )
 
 # שלב 3: מיון לפי כמות תאונות
-data <- data %>%
+car_all_systems_data <- car_all_systems_data %>%
   arrange(desc(Count))
 
 # שלב 4: ציור גרף של כל 64 הקומבינציות עם סיבוב תוויות
-ggplot(data, aes(x = reorder(combo, -Count), y = Count)) +
+ggplot(car_all_systems_data, aes(x = reorder(combo_all_systems, -Count), y = Count)) +
   geom_col(fill = "steelblue") +
   labs(
     title = "Number of Accidents by Safety System Combination (64 combos)",
@@ -300,44 +295,30 @@ ggplot(data, aes(x = reorder(combo, -Count), y = Count)) +
   )
 ```
 
+# shelly part ends here
+
 ```{r}
 
 # שלב 1: סינון תאונות חמורות בלבד
 FilteredData_serious <- FilteredData %>%
   filter(DEFORMEDNAME == "Disabling Damage")
 
-# שלב 2: יצירת קומבו ובחירת קומבינציות עם 1–2 מערכות
-FilteredData_serious$combo <- apply(FilteredData_serious[, notification_cols], 1, paste0, collapse = "")
 valid_combos <- c("001", "010", "100", "110", "101", "011")
 
 FilteredData_combo <- FilteredData_serious %>%
-  filter(combo %in% valid_combos)
+  filter(combo_alert_systems %in% valid_combos)
 
 # שלב 3: אחוזים וכמויות באוכלוסייה
-empirical_probs <- c(
-  "001" = 0.0812,
-  "010" = 0.0812,
-  "100" = 0.0615,
-  "110" = 0.0641,
-  "101" = 0.0338,
-  "011" = 0.1122
-)
+empirical_probs_alert_systems <- empirical_probs_alert_systems[!names(empirical_probs_alert_systems) %in% c("000", "111")]
+empirical_counts_alert_systems <- empirical_counts_alert_systems[!names(empirical_counts_alert_systems) %in% c("000", "111")]
 
-empirical_counts <- c(
-  "001" = 260,
-  "010" = 627,
-  "100" = 475,
-  "110" = 495,
-  "101" = 261,
-  "011" = 866
-)
 
 # שלב 4: נרמול לפי גודל קבוצה
 FilteredData_combo <- FilteredData_combo %>%
   mutate(
-    combo_prob  = empirical_probs[combo],
-    combo_count = empirical_counts[combo],
-    weight      = 1 / combo_prob
+    combo_prob_alert_systems  = empirical_probs_alert_systems[combo_alert_systems],
+    combo_count_alert_systems = empirical_counts_alert_systems[combo_alert_systems],
+    weight_alert_system      = 1 / combo_prob_alert_systems
   )
 
 # שלב 5: מודלים עם interactions ו־weights
@@ -346,21 +327,21 @@ model_front <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                      LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                   data = FilteredData_combo, family = "binomial", weights = weight)
+                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 
 model_side <- glm(grepl("Side", TYPE_OF_COLLIOSION) ~
                     FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                     LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                  data = FilteredData_combo, family = "binomial", weights = weight)
+                  data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 
 model_angle <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                      LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                   data = FilteredData_combo, family = "binomial", weights = weight)
+                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 
 
 ```
@@ -418,13 +399,43 @@ ggplot(coef_table, aes(x = term, y = estimate, color = CrashType)) +
 
 ```{r}
 
+FilteredData_combo <- FilteredData_combo %>%
+  left_join(
+    car_all_systems_data %>%
+      select(
+        FRNT_COLLISION_WARNING,
+        LANE_DEPARTURE_WARNING,
+        BLIND_SPOT_DETECTION,
+        CRASH_IMMINENT_BRAKE,
+        DYNAMIC_BRAKE_SUPPORT,
+        NHTSA_ESC,
+        combo,
+        Percent
+      ),
+    by = c(
+      "FRNT_COLLISION_WARNING",
+      "LANE_DEPARTURE_WARNING",
+      "BLIND_SPOT_DETECTION",
+      "CRASH_IMMINENT_BRAKE",
+      "DYNAMIC_BRAKE_SUPPORT",
+      "NHTSA_ESC"
+    )
+  )
+```
+
+
+
+```{r}
+
+
+
 model_front_lane_extended <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
   FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
   FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
   FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
   FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT,
   data = FilteredData_combo,
-  family = "binomial", weights = weight)
+  family = "binomial", weights = weight_active_systems)
 
 
 model_front_blind_extended <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
@@ -432,7 +443,7 @@ model_front_blind_extended <- glm(grepl("Front", TYPE_OF_COLLIOSION) ~
   FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE +
   FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:DYNAMIC_BRAKE_SUPPORT,
   data = FilteredData_combo,
-  family = "binomial", weights = weight)
+  family = "binomial", weights = weight_active_systems)
 
 model_angle_front_extended <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
   FRNT_COLLISION_WARNING +
@@ -440,12 +451,12 @@ model_angle_front_extended <- glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
   FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
   FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT,
   data = FilteredData_combo,
-  family = "binomial", weights = weight)
+  family = "binomial", weights = weight_active_systems)
 
 
 ```
 
-
+ 
 ```{r}
 extract_coefs <- function(model, crash_type) {
   tidy(model) %>%
@@ -463,7 +474,10 @@ coef_table <- bind_rows(
       "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane",
       "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Lane + Crash_Imminent",
       "FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT" = "Front + Dynamic_Brake",
-      "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT:NHTSA_ESC" = "Front + Crash_Imminent + Dynamic_Brake + ESC",
+      "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE:DYNAMIC_BRAKE_SUPPORT" = "Front + Lane + Crash_Imminent + Dynamic_Brake",
+      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE" = "Front + Blind + Crash_Imminent",
+      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:DYNAMIC_BRAKE_SUPPORT" = "Front + Blind + Dynamic_Brake",
+      "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Crash_Imminent",
       .default = term  # חשוב! שמירה על ערכים שלא צוינו
     ),
     lower = estimate - 1.96 * std.error,
@@ -471,7 +485,7 @@ coef_table <- bind_rows(
   )
 
 significant <- coef_table %>%
-  filter(p.value < 0.05 & p.value > 1e-5) 
+  filter(p.value < 0.05) 
 
 kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
 ```
