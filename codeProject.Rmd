@@ -427,56 +427,34 @@ FilteredData_combo = FilteredData_combo %>%
 FilteredData_combo = FilteredData_combo %>%
   rename(
     precent_all_systems = Percent
+  ) %>%
+   mutate(
+    weight_all_systems = 1 / precent_all_systems
   )
 ```
 
 
-
+ 
 ```{r}
+model_front_extend = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
+                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE,
+                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 
-model_blind_extened = glm(
-  grepl("Side", TYPE_OF_COLLIOSION) ~
-    BLIND_SPOT_DETECTION +
-    DYNAMIC_BRAKE_SUPPORT +
-    NHTSA_ESC +
-    BLIND_SPOT_DETECTION:DYNAMIC_BRAKE_SUPPORT + 
-    BLIND_SPOT_DETECTION:NHTSA_ESC,
-  data = FilteredData_combo,
-  family = "binomial",
-  weights = precent_all_systems
-)
+model_side_extend = glm(grepl("Side", TYPE_OF_COLLIOSION) ~
+                    BLIND_SPOT_DETECTION:NHTSA_ESC +
+                    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,
+                  data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 
-#not enough data for the model_front_lane_extended_side                             
-
-model_front_blind_corrected <- glm(
-  grepl("Front", TYPE_OF_COLLIOSION) ~
-    FRNT_COLLISION_WARNING +
-    BLIND_SPOT_DETECTION +
-    CRASH_IMMINENT_BRAKE +
-    FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
-    FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE,
-  data = FilteredData_combo,
-  family = "binomial",
-  weights = precent_all_systems
-)
-
-
-model_front_lane_angle_corrected <- glm(
-  grepl("Angle", TYPE_OF_COLLIOSION) ~
-    FRNT_COLLISION_WARNING +
-    LANE_DEPARTURE_WARNING +
-    DYNAMIC_BRAKE_SUPPORT +
-    NHTSA_ESC +
-    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
-    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
-    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,
-  data = FilteredData_combo,
-  family = "binomial",
-  weights = precent_all_systems
-)
-
-
+model_angle_extend = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
+                     FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
+                     FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + 
+                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC,
+                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
 ```
+
  
 ```{r}
 # פונקציית חילוץ מקדמים ממודל
@@ -487,19 +465,21 @@ extract_coefs <- function(model, crash_type) {
 
 # איחוד כל המודלים
 coef_table <- bind_rows(
-  extract_coefs(model_blind_extened, "Side"),
-  extract_coefs(model_front_lane_extended_side, "Side"),
-  extract_coefs(model_front_blind_extended, "Front"),
-  extract_coefs(model_front_lane_extended_Angel, "Angle")
+  extract_coefs(model_front_extend, "Front"),
+  extract_coefs(model_side_extend, "Side"),
+  extract_coefs(model_angle_extend, "Angle")
 ) %>%
   filter(term != "(Intercept)") %>%
   mutate(
     term = recode(term,
       # Blind + Active
-      "BLIND_SPOT_DETECTION:DYNAMIC_BRAKE_SUPPORT" = "Blind + Dynamic_Brake",
-      "BLIND_SPOT_DETECTION:NHTSA_ESC" = "Blind + ESC",
-      "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT" = "Front + Lane + Dynamic_Brake",
-      "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION" = "Front + Blind",
+       "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Lane + Imminent_Brake",
+       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:BLIND_SPOT_DETECTION" = "Front + Blind + Imminent_Brake",
+       "BLIND_SPOT_DETECTION:NHTSA_ESC" = "Blind + ESC",
+       "NHTSA_ESC:FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane + ESC",
+       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Imminent_Brake",
+       "FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT" = "Front + Dynamic_Brake",
+       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:LANE_DEPARTURE_WARNING" = "Front + Lane + Imminent_Brake",
       .default = term  # משאיר את כל היתר ללא שינוי
     ),
     lower = estimate - 1.96 * std.error,
@@ -518,20 +498,19 @@ knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)"
 
 ```{r}
 
-from_or <- exp(0.402)
-to_or_dynamic <- exp(-0.923)
-to_or_esc <- exp(-1.181)
 
 # טבלת תוצאות
 effects_df <- data.frame(
-  Comparison = c("Blind -> +Dynamic Brake", "Blind -> +ESC"),
-  From_OR = c(from_or, from_or),
-  To_OR = c(to_or_dynamic, to_or_esc),
-  CrashType = c("Side", "Side")
+  Comparison = c("Front + Lane -> +Imminent_Brake", "Front + Blind -> +Imminent_Brake","Blind -> +ESC", "Front -> +Imminent_Brake"),
+  From_OR = exp(c(-0.175, 0.267, 0.402, -0.127)),
+  To_OR = exp(c(-0.187, 0.253, -0.657, -0.138)),
+  CrashType = c("Front", "Front", "Side", "Angle")
 ) %>%
   mutate(
     PercentChange = (From_OR - To_OR) / From_OR * 100
   )
+
+colors = c("Front" = "steelblue", "Side" = "indianred" ,  "Angle" = "darkolivegreen")
 
 # ציור גרף
 ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
@@ -541,7 +520,7 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
     vjust = -0.3,
     size = 5
   ) +
-  scale_fill_manual(values = c("Side" = "steelblue3")) +
+  scale_fill_manual(values = colors) +
   scale_y_continuous(
     labels = percent_format(scale = 1),
     limits = c(0, 100)
@@ -554,6 +533,7 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
   ) +
   theme_minimal(base_size = 14) +
   theme(
+    axis.text.x = element_text(angle = 15, hjust = 1),
     plot.title = element_text(face = "bold", hjust = 0.5),
     legend.title = element_text(size = 13),
     legend.text = element_text(size = 12)
