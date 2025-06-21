@@ -341,10 +341,10 @@ coef_table = bind_rows(
     upper = estimate + 1.96 * std.error
   )
 
-significant = coef_table %>%
-  filter(p.value < 0.05)
-
-kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
+# significant = coef_table %>%
+#   filter(p.value < 0.05)
+# 
+# kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
 
 ```
 
@@ -405,21 +405,21 @@ CarsAccidentsData = CarsAccidentsData %>%
  
 ```{r}
 model_front_extend = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
-                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
-                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
-                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE,
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + # 011100
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT + # 011010
+                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE, # 110100
                    data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 
 model_side_extend = glm(grepl("Side", TYPE_OF_COLLIOSION) ~
-                    BLIND_SPOT_DETECTION:NHTSA_ESC +
-                    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,
+                    BLIND_SPOT_DETECTION:NHTSA_ESC + # 100001
+                    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,# 011001
                   data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 
 model_angle_extend = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
-                     FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
-                     FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
-                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + 
-                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC,
+                     FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE + # 010100
+                     FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT + # 010010
+                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + # 011100
+                     BLIND_SPOT_DETECTION:FRNT_COLLISION_WARNING:NHTSA_ESC, # 110001
                    data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 ```
 
