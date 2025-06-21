@@ -233,7 +233,6 @@ car_safey_combinations = car_safey_combinations %>%
       FRNT_COLLISION_WARNING,
       LANE_DEPARTURE_WARNING,
       BLIND_SPOT_DETECTION,
-      "_",
       CRASH_IMMINENT_BRAKE,
       DYNAMIC_BRAKE_SUPPORT,
       NHTSA_ESC
@@ -369,6 +368,7 @@ ggplot(coef_table, aes(x = term, y = estimate, color = CrashType)) +
 
 ```{r}
 
+
 CarsAccidentsData = CarsAccidentsData %>%
   left_join(
     car_safey_combinations %>%
@@ -408,19 +408,19 @@ model_front_extend = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE,
-                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 
 model_side_extend = glm(grepl("Side", TYPE_OF_COLLIOSION) ~
                     BLIND_SPOT_DETECTION:NHTSA_ESC +
                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,
-                  data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
+                  data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 
 model_angle_extend = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
                      FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + 
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC,
-                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_all_systems)
 ```
 
  
@@ -441,13 +441,9 @@ coef_table <- bind_rows(
   mutate(
     term = recode(term,
       # Blind + Active
-       "FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Lane + Imminent_Brake",
-       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:BLIND_SPOT_DETECTION" = "Front + Blind + Imminent_Brake",
-       "BLIND_SPOT_DETECTION:NHTSA_ESC" = "Blind + ESC",
-       "NHTSA_ESC:FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING" = "Front + Lane + ESC",
-       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE" = "Front + Imminent_Brake",
-       "FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT" = "Front + Dynamic_Brake",
-       "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:LANE_DEPARTURE_WARNING" = "Front + Lane + Imminent_Brake",
+         "FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE:LANE_DEPARTURE_WARNING" = "Front + Lane + Imminent_Brake",
+         "BLIND_SPOT_DETECTION:NHTSA_ESC" = "Blind + ESC",
+         "FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC" = "Front + Blind + ESC",
       .default = term  # משאיר את כל היתר ללא שינוי
     ),
     lower = estimate - 1.96 * std.error,
@@ -459,7 +455,7 @@ significant <- coef_table %>%
   filter(p.value < 0.05)
 
 # הצגת טבלה
-knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
+knitr::kable(coef_table, digits = 3, caption = "Significant Effects (p < 0.05)")
 ```
 
 
@@ -469,16 +465,16 @@ knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)"
 
 # טבלת תוצאות
 effects_df <- data.frame(
-  Comparison = c("Front + Lane -> +Imminent_Brake", "Front + Blind -> +Imminent_Brake","Blind -> +ESC", "Front -> +Imminent_Brake"),
-  From_OR = exp(c(-0.175, 0.267, 0.402, -0.127)),
-  To_OR = exp(c(-0.187, 0.253, -0.657, -0.138)),
-  CrashType = c("Front", "Front", "Side", "Angle")
+  Comparison = c("Front + Blind -> +ESC","Blind -> +ESC"),
+  From_OR = exp(c(0.402, -0.150)),
+  To_OR = exp(c(-0.989, -0.449)),
+  CrashType = c("Angle",  "Side")
 ) %>%
   mutate(
     PercentChange = (From_OR - To_OR) / From_OR * 100
   )
 
-colors = c("Front" = "steelblue", "Side" = "indianred" ,  "Angle" = "darkolivegreen")
+colors = c("Side" = "indianred" ,  "Angle" = "steelblue")
 
 # ציור גרף
 ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
@@ -508,5 +504,3 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
   )
 
 ```
-
-
