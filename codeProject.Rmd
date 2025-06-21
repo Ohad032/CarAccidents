@@ -24,21 +24,23 @@ active_systems_cols = c("CRASH_IMMINENT_BRAKE", "DYNAMIC_BRAKE_SUPPORT", "NHTSA_
 
 ```{r}
 
-set.seed(123)  # לשחזור תוצאה, אפשר לשנות או להסיר
+set.seed(123) 
 
-CleanedData = CarsAccidentsData %>%
+CarsAccidentsData = CarsAccidentsData %>%
   mutate(across(all_of(notification_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
 
-CleanedData = CleanedData %>%
+CarsAccidentsData = CarsAccidentsData %>%
   mutate(across(all_of(active_systems_cols), ~ ifelse(.x == 2, sample(c(0, 1), size = length(.x), replace = TRUE), .x)))
 
-CleanedData = CleanedData %>% dplyr::select(-any_of(c("AUTO_CRASH_NOTIFICATION", "ARS")))
-CleanedData$notification_count = rowSums(CleanedData[, notification_cols] == 1)
+CarsAccidentsData = CarsAccidentsData %>% 
+  dplyr::select(-any_of(c("AUTO_CRASH_NOTIFICATION", "ARS")))
+
+CarsAccidentsData$notification_count = rowSums(CarsAccidentsData[, notification_cols] == 1)
 ```
 
 ```{r}
 
-FilteredData = CleanedData %>%
+CarsAccidentsData = CarsAccidentsData %>%
   filter(
     DR_DRINK == 0,                                
     VSURCONDNAME == "Dry",                        
@@ -68,7 +70,7 @@ group_probs = c(
 )
 
 # Step 2: Summarize accidents by notification_count
-accidents_by_notifications = FilteredData %>%
+accidents_by_notifications = CarsAccidentsData %>%
   group_by(notification_count) %>%
   summarise(num_accidents = n(), .groups = "drop") %>%
   mutate(
@@ -94,10 +96,10 @@ ggplot(accidents_by_notifications, aes(x = factor(notification_count), y = num_a
 
 ```{r}
 # Step 2: Create 'combo' column (e.g., "101")
-FilteredData$combo_alert_systems = apply(FilteredData[, notification_cols], 1, paste0, collapse = "")
+CarsAccidentsData$combo_alert_systems = apply(CarsAccidentsData[, notification_cols], 1, paste0, collapse = "")
 
 # Step 3: Count number of accidents per combo
-combo_summary = FilteredData %>%
+combo_summary = CarsAccidentsData %>%
   group_by(combo_alert_systems) %>%
   summarise(num_accidents = n(), .groups = "drop")
 
@@ -159,10 +161,10 @@ ggplot(final, aes(x = combo_alert_systems, y = num_accidents)) +
 ```{r}
 
 # Step 2: Create 'combo' column (e.g., "101")
-FilteredData$combo_active_systems = apply(FilteredData[, active_systems_cols], 1, paste0, collapse = "")
+CarsAccidentsData$combo_active_systems = apply(CarsAccidentsData[, active_systems_cols], 1, paste0, collapse = "")
 
 # Step 3: Count number of accidents per combo
-combo_summary = FilteredData %>%
+combo_summary = CarsAccidentsData %>%
   group_by(combo_active_systems) %>%
   summarise(num_accidents = n(), .groups = "drop")
 
@@ -222,10 +224,10 @@ ggplot(final, aes(x = combo_active_systems, y = num_accidents)) +
 ```{r}
 
 # קריאת הקובץ
-car_all_systems_data = read_csv("data/car_safety_combinations_final_correct.csv")
+car_safey_combinations = read_csv("data/car_safety_combinations_final_correct.csv")
 
 # יצירת עמודת קומבינציה (3 ביטים של התראה + _ + 3 ביטים של אקטיביות)
-car_all_systems_data = car_all_systems_data %>%
+car_safey_combinations = car_safey_combinations %>%
   mutate(
     combo_all_systems = paste0(
       FRNT_COLLISION_WARNING,
@@ -239,15 +241,15 @@ car_all_systems_data = car_all_systems_data %>%
   )
 
 # סידור לפי כמות תאונות מהגבוה לנמוך
-car_all_systems_data = car_all_systems_data %>%
+car_safey_combinations = car_safey_combinations %>%
   arrange(desc(Count))
 
 # חלוקה ל־4 קבוצות של 16 קומבינציות כל אחת
-car_all_systems_data$group = rep(1:4, each = 16)
+car_safey_combinations$group = rep(1:4, each = 16)
 
 # ציור גרף עבור כל קבוצה
 for (g in 1:4) {
-  chunk = filter(car_all_systems_data, group == g)
+  chunk = filter(car_safey_combinations, group == g)
   p = ggplot(chunk, aes(x = combo_all_systems, y = Count)) +
     geom_col(fill = "steelblue") +
     labs(
@@ -263,51 +265,17 @@ for (g in 1:4) {
 
 ```
 
-```{r}
-
-# שלב 2: יצירת מחרוזת קומבינציה 6 ספרות (3 של התראה + 3 של אקטיביות)
-car_all_systems_data = car_all_systems_data %>%
-  mutate(
-    combo_all_systems = paste0(
-      BLIND_SPOT_DETECTION,
-      FRNT_COLLISION_WARNING,
-      LANE_DEPARTURE_WARNING,
-      CRASH_IMMINENT_BRAKE,
-      DYNAMIC_BRAKE_SUPPORT,
-      NHTSA_ESC
-    )
-  )
-
-# שלב 3: מיון לפי כמות תאונות
-car_all_systems_data = car_all_systems_data %>%
-  arrange(desc(Count))
-
-# שלב 4: ציור גרף של כל 64 הקומבינציות עם סיבוב תוויות
-ggplot(car_all_systems_data, aes(x = reorder(combo_all_systems, -Count), y = Count)) +
-  geom_col(fill = "steelblue") +
-  labs(
-    title = "Number of Accidents by Safety System Combination (64 combos)",
-    x = "System Combination (3 alerts + 3 actives)",
-    y = "Number of Accidents"
-  ) +
-  theme_minimal() +
-  theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5, size = 6),
-    plot.title = element_text(hjust = 0.5)
-  )
-```
-
 # shelly part ends here
 
 ```{r}
 
 # שלב 1: סינון תאונות חמורות בלבד
-FilteredData_serious = FilteredData %>%
+CarsAccidentsData = CarsAccidentsData %>%
   filter(DEFORMEDNAME == "Disabling Damage")
 
 valid_combos = c("001", "010", "100", "110", "101", "011")
 
-FilteredData_combo = FilteredData_serious %>%
+CarsAccidentsData = CarsAccidentsData %>%
   filter(combo_alert_systems %in% valid_combos)
 
 # שלב 3: אחוזים וכמויות באוכלוסייה
@@ -316,11 +284,11 @@ empirical_counts_alert_systems = empirical_counts_alert_systems[!names(empirical
 
 
 # שלב 4: נרמול לפי גודל קבוצה
-FilteredData_combo = FilteredData_combo %>%
+CarsAccidentsData = CarsAccidentsData %>%
   mutate(
     combo_prob_alert_systems  = empirical_probs_alert_systems[combo_alert_systems],
     combo_count_alert_systems = empirical_counts_alert_systems[combo_alert_systems],
-    weight_alert_system      = 1 / combo_prob_alert_systems
+    weight_alert_system = 1 / combo_prob_alert_systems
   )
 
 # שלב 5: מודלים עם interactions ו־weights
@@ -329,21 +297,21 @@ model_front = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                      LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 
 model_side = glm(grepl("Side", TYPE_OF_COLLIOSION) ~
                     FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                     LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                  data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                  data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 
 model_angle = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION +
                      LANE_DEPARTURE_WARNING:BLIND_SPOT_DETECTION,
-                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 
 
 ```
@@ -401,9 +369,9 @@ ggplot(coef_table, aes(x = term, y = estimate, color = CrashType)) +
 
 ```{r}
 
-FilteredData_combo = FilteredData_combo %>%
+CarsAccidentsData = CarsAccidentsData %>%
   left_join(
-    car_all_systems_data %>%
+    car_safey_combinations %>%
       select(
         FRNT_COLLISION_WARNING,
         LANE_DEPARTURE_WARNING,
@@ -424,7 +392,7 @@ FilteredData_combo = FilteredData_combo %>%
     )
   )
 
-FilteredData_combo = FilteredData_combo %>%
+CarsAccidentsData = CarsAccidentsData %>%
   rename(
     precent_all_systems = Percent
   ) %>%
@@ -440,19 +408,19 @@ model_front_extend = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT +
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE,
-                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 
 model_side_extend = glm(grepl("Side", TYPE_OF_COLLIOSION) ~
                     BLIND_SPOT_DETECTION:NHTSA_ESC +
                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,
-                  data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                  data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 
 model_angle_extend = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE +
                      FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + 
                      FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC,
-                   data = FilteredData_combo, family = "binomial", weights = weight_alert_system)
+                   data = CarsAccidentsData, family = "binomial", weights = weight_alert_system)
 ```
 
  
