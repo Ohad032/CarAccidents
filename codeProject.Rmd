@@ -278,7 +278,6 @@ comparisons <- inner_join(base, added, by = "combo_alerts") %>%
     label = paste(base_combo, "→", comparison_combo)
   )
 
-# ✳️ הדפסה של כל ההשוואות בטקסט
 cat("🔍 כל ההשוואות בין קומבינציות:\n")
 for (i in seq_len(nrow(comparisons))) {
   cat(paste0("• ", comparisons$base_combo[i], " → ", comparisons$comparison_combo[i], "\n"))
