@@ -439,8 +439,8 @@ ggplot(coef_df, aes(x = Predictor, y = estimate)) +
 # שיוך קבוצה + תאונה קשה + נרמול
 cars_accidents_data_grouped <- cars_accidents_data %>%
   mutate(
-    has_alert = rowSums(across(all_of(alert_systems)) == 1) > 0,
-    has_active = rowSums(across(all_of(active_systems)) == 1) > 0,
+    has_alert = rowSums(across(all_of(alert_systems_cols)) == 1) > 0,
+    has_active = rowSums(across(all_of(active_systems_cols)) == 1) > 0,
     group = case_when(
       has_alert & has_active ~ "Both",
       has_alert & !has_active ~ "Alerts Only",
@@ -530,6 +530,9 @@ cars_accidents_data <- cars_accidents_data %>%
   ) %>%
   mutate(
     weight_alert_system = 1 / Percent
+  )%>%
+  rename(
+    alert_system_percent = Percent
   )
 
 
@@ -640,6 +643,7 @@ cars_accidents_data = cars_accidents_data %>%
     )
   )
 
+
 cars_accidents_data = cars_accidents_data %>%
   rename(
     precent_all_systems = Percent
@@ -648,7 +652,6 @@ cars_accidents_data = cars_accidents_data %>%
     weight_all_systems = 1 / precent_all_systems
   )
 
-cars_accidents_data
 ```
 
 
@@ -716,8 +719,8 @@ knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)"
 # טבלת תוצאות
 effects_df <- data.frame(
   Comparison = c("Front + Blind -> +ESC","Blind -> +ESC"),
-  From_OR = exp(c(0.402, -0.150)),
-  To_OR = exp(c(-0.845, -0.451)),
+  From_OR = exp(c(model_angle$coefficients["FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION"], model_side$coefficients["BLIND_SPOT_DETECTION"])),
+  To_OR = exp(c(model_angle_extend$coefficients["FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC"], model_side_extend$coefficients["BLIND_SPOT_DETECTION:NHTSA_ESC"])),
   CrashType = c("Angle",  "Side")
 ) %>%
   mutate(
@@ -748,7 +751,6 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
   theme_minimal(base_size = 14) +
   theme(
     axis.text.x = element_text(angle = 15, hjust = 1),
-    plot.title = element_text(face = "bold", hjust = 0.5),
     legend.title = element_text(size = 13),
     legend.text = element_text(size = 12)
   )
