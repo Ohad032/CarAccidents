@@ -382,7 +382,10 @@ ggplot(accident_summary, aes(x = fct_reorder(group, NormalizedRate), y = Normali
 
 
 ```
+end of plotng the data
 
+-----------------------------------------------------------
+# modeling
 
 
 ```{r}
@@ -484,10 +487,7 @@ ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
 ```
 
 
-end of plotng the data
 
------------------------------------------------------------
-# modeling
 
 ```{r}
 
