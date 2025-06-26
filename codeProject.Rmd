@@ -382,6 +382,357 @@ ggplot(accident_summary, aes(x = fct_reorder(group, NormalizedRate), y = Normali
 
 
 ```
+
+
+```{r}
+
+# שלב 1: יצירת מזהים לכל קומבינציה
+car_safey_combinations <- car_safey_combinations %>%
+  mutate(
+    combo_alerts = paste0(FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING, BLIND_SPOT_DETECTION),
+    combo_actives = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC),
+    combo_full = paste0(combo_alerts, "_", combo_actives),
+    alert_sum = FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION,
+    active_sum = CRASH_IMMINENT_BRAKE + DYNAMIC_BRAKE_SUPPORT + NHTSA_ESC
+  )
+
+# שלב 2: בסיס — מערכות התראה בלבד
+base <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum == 0) %>%
+  select(combo_alerts, base_combo = combo_full, base_count = Count)
+
+# שלב 3: תוספות — אותן התראות עם תוספת אקטיביות
+added <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum >= 1) %>%
+  select(combo_alerts, comparison_combo = combo_full, comparison_count = Count)
+
+# שלב 4: חיבור בין בסיס לתוספות לפי התראות בלבד
+comparisons <- inner_join(base, added, by = "combo_alerts") %>%
+  mutate(
+    diff = comparison_count - base_count,
+    label = paste(base_combo, "→", comparison_combo)
+  )
+
+# שלב 5: שמירת מעבר אחד לכל קומבינציית התראה עם העלייה הכי גדולה בתאונות
+top_negative_per_alert <- comparisons %>%
+  group_by(combo_alerts) %>%
+  slice_min(order_by = diff, n = 1) %>%
+  ungroup() %>%
+  arrange(diff) %>%
+  head(5)
+
+# שלב 6: המרה לפורמט ארוך עם תוויות ופקטרים בסדר הנכון
+top5_long <- top_negative_per_alert %>%
+  pivot_longer(
+    cols = c(base_count, comparison_count),
+    names_to = "Type",
+    values_to = "CrashCount"
+  ) %>%
+  mutate(
+    Type = recode(Type,
+                  "base_count" = "Alerts Only",
+                  "comparison_count" = "Alerts + Actives"),
+    # שינוי סדר הפקטורים כך ש-Alerts Only יהיה ראשון
+    Type = factor(Type, levels = c("Alerts Only", "Alerts + Actives"))
+  )
+# שלב 6.5: יצירת טבלת הפרשים להצגה מעל העמודות
+diff_labels <- top_negative_per_alert %>%
+  mutate(
+    mid_label = label,
+    max_count = pmax(base_count, comparison_count),
+    diff_label = paste0("Δ=", diff)
+  )
+
+# שלב 7: ציור גרף עמודות עם הפרש למעלה
+ggplot(top5_long, aes(x = label, y = CrashCount, fill = Type)) +
+  geom_col(position = "dodge") +
+
+  # מספר התאונות מעל כל עמודה
+  geom_text(
+    aes(label = CrashCount),
+    position = position_dodge(width = 0.9),
+    vjust = -1.2,
+    size = 4
+  ) +
+
+  # הפרשים מעל כל זוג — בגובה קבוע
+  geom_text(
+    data = diff_labels,
+    aes(x = mid_label, y = 300, label = diff_label),  # כאן את שולטת בדיוק איפה זה
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+
+  labs(
+    title = "Crash Counts Before and After Adding Active Systems",
+    subtitle = "Top 5 Increases in Crashes (Same Alerts)",
+    x = "From → To (Same Alerts)",
+    y = "Crash Count",
+    fill = "System Type"
+  ) +
+  ylim(0, 330) +  # מספיק כדי שהטקסט לא ייחתך
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+```{r}
+
+# שלב 1: יצירת מזהים לכל קומבינציה
+car_safey_combinations <- car_safey_combinations %>%
+  mutate(
+    combo_alerts = paste0(FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING, BLIND_SPOT_DETECTION),
+    combo_actives = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC),
+    combo_full = paste0(combo_alerts, "_", combo_actives),
+    alert_sum = FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION,
+    active_sum = CRASH_IMMINENT_BRAKE + DYNAMIC_BRAKE_SUPPORT + NHTSA_ESC
+  )
+
+# שלב 2: בסיס — מערכות התראה בלבד
+base <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum == 0) %>%
+  select(combo_alerts, base_combo = combo_full, base_count = Count)
+
+# שלב 3: תוספות — אותן התראות עם תוספת אקטיביות
+added <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum >= 1) %>%
+  select(combo_alerts, comparison_combo = combo_full, comparison_count = Count)
+
+# שלב 4: חיבור בין בסיס לתוספות לפי התראות בלבד
+comparisons <- inner_join(base, added, by = "combo_alerts") %>%
+  mutate(
+    diff = comparison_count - base_count,
+    label = paste(base_combo, "→", comparison_combo)
+  )
+
+# שלב 5: שמירת מעבר אחד לכל קומבינציית התראה עם העלייה הכי גדולה בתאונות
+top_negative_per_alert <- comparisons %>%
+  group_by(combo_alerts) %>%
+  slice_min(order_by = diff, n = 1) %>%
+  ungroup() %>%
+  arrange(diff) %>%
+  head(5)
+
+# שלב 6: המרה לפורמט ארוך עם תוויות ופקטרים בסדר הנכון
+top5_long <- top_negative_per_alert %>%
+  pivot_longer(
+    cols = c(base_count, comparison_count),
+    names_to = "Type",
+    values_to = "CrashCount"
+  ) %>%
+  mutate(
+    Type = recode(Type,
+                  "base_count" = "Alerts Only",
+                  "comparison_count" = "Alerts + Actives"),
+    # שינוי סדר הפקטורים כך ש-Alerts Only יהיה ראשון
+    Type = factor(Type, levels = c("Alerts Only", "Alerts + Actives"))
+  )
+# שלב 6.5: יצירת טבלת הפרשים להצגה מעל העמודות
+diff_labels <- top_negative_per_alert %>%
+  mutate(
+    mid_label = label,
+    max_count = pmax(base_count, comparison_count),
+    diff_label = paste0("Δ=", diff)
+  )
+
+# שלב 7: ציור גרף עמודות עם הפרש למעלה
+ggplot(top5_long, aes(x = label, y = CrashCount, fill = Type)) +
+  geom_col(position = "dodge") +
+
+  # מספר התאונות מעל כל עמודה
+  geom_text(
+    aes(label = CrashCount),
+    position = position_dodge(width = 0.9),
+    vjust = -1.2,
+    size = 4
+  ) +
+
+  # הפרשים מעל כל זוג — בגובה קבוע
+  geom_text(
+    data = diff_labels,
+    aes(x = mid_label, y = 300, label = diff_label),  # כאן את שולטת בדיוק איפה זה
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+
+  labs(
+    title = "Crash Counts Before and After Adding Active Systems",
+    subtitle = "Top 5 Increases in Crashes (Same Alerts)",
+    x = "From → To (Same Alerts)",
+    y = "Crash Count",
+    fill = "System Type"
+  ) +
+  ylim(0, 330) +  # מספיק כדי שהטקסט לא ייחתך
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+
+
+# שלב 1: יצירת מזהים לכל קומבינציה
+car_safey_combinations <- car_safey_combinations %>%
+  mutate(
+    combo_alerts = paste0(FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING, BLIND_SPOT_DETECTION),
+    combo_actives = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC),
+    combo_full = paste0(combo_alerts, "_", combo_actives),
+    alert_sum = FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION,
+    active_sum = CRASH_IMMINENT_BRAKE + DYNAMIC_BRAKE_SUPPORT + NHTSA_ESC
+  )
+
+# שלב 2: בסיס — מערכות התראה בלבד
+base <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum == 0) %>%
+  select(combo_alerts, base_combo = combo_full, base_count = Count)
+
+# שלב 3: תוספות — אותן התראות עם תוספת אקטיביות
+added <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum >= 1) %>%
+  select(combo_alerts, comparison_combo = combo_full, comparison_count = Count)
+
+# שלב 4: חיבור בין בסיס לתוספות לפי התראות בלבד
+comparisons <- inner_join(base, added, by = "combo_alerts") %>%
+  mutate(
+    diff = comparison_count - base_count,
+    label = paste(base_combo, "→", comparison_combo)
+  )
+
+# שלב 5: שמירת מעבר אחד לכל קומבינציית התראה עם העלייה הכי גדולה בתאונות
+top_negative_per_alert <- comparisons %>%
+  group_by(combo_alerts) %>%
+  slice_min(order_by = diff, n = 1) %>%
+  ungroup() %>%
+  arrange(diff) %>%
+  head(5)
+
+# שלב 6: המרה לפורמט ארוך עם תוויות ופקטרים בסדר הנכון
+top5_long <- top_negative_per_alert %>%
+  pivot_longer(
+    cols = c(base_count, comparison_count),
+    names_to = "Type",
+    values_to = "CrashCount"
+  ) %>%
+  mutate(
+    Type = recode(Type,
+                  "base_count" = "Alerts Only",
+                  "comparison_count" = "Alerts + Actives"),
+    # שינוי סדר הפקטורים כך ש-Alerts Only יהיה ראשון
+    Type = factor(Type, levels = c("Alerts Only", "Alerts + Actives"))
+  )
+
+# שלב 6.5: טבלת הפרשים – גובה טקסט יהיה max העמודות + מרווח קבוע
+diff_labels <- top_negative_per_alert %>%
+  mutate(
+    mid_label = label,
+    max_count = pmax(base_count, comparison_count),
+    label_y = max_count + 70,  # ✨ כל טקסט יוצג 40 יחידות מעל העמודה הגבוהה
+    diff_label = paste0("Δ=", diff)
+  )
+ggplot(top5_long, aes(x = label, y = CrashCount, fill = Type)) +
+  geom_col(position = "dodge") +
+
+  # מספר התאונות מעל כל עמודה
+  geom_text(
+    aes(label = CrashCount),
+    position = position_dodge(width = 0.9),
+    vjust = -1.2,
+    size = 4
+  ) +
+
+  # הפרש בין Alerts Only ל- Alerts + Actives מעל שתי העמודות — בגובה מותאם
+  geom_text(
+    data = diff_labels,
+    aes(x = mid_label, y = label_y, label = diff_label),  # 🔁 משתמשים בעמודה עם גובה מותאם אישית
+    inherit.aes = FALSE,
+    size = 5
+  ) +
+
+  labs(
+    title = "Crash Counts Before and After Adding Active Systems",
+    subtitle = "Top 5 Increases in Crashes (Same Alerts)",
+    x = "From → To (Same Alerts)",
+    y = "Crash Count",
+    fill = "System Type"
+  ) +
+  ylim(0, max(diff_labels$label_y) + 20) +  # עוד קצת מרווח כללי
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# שלב 1: יצירת מזהים לכל קומבינציה
+car_safey_combinations <- car_safey_combinations %>%
+  mutate(
+    combo_alerts = paste0(FRNT_COLLISION_WARNING, LANE_DEPARTURE_WARNING, BLIND_SPOT_DETECTION),
+    combo_actives = paste0(CRASH_IMMINENT_BRAKE, DYNAMIC_BRAKE_SUPPORT, NHTSA_ESC),
+    combo_full = paste0(combo_alerts, "_", combo_actives),
+    alert_sum = FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION,
+    active_sum = CRASH_IMMINENT_BRAKE + DYNAMIC_BRAKE_SUPPORT + NHTSA_ESC
+  )
+
+# שלב 2: בסיס — מערכות התראה בלבד
+base <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum == 0) %>%
+  select(combo_alerts, base_combo = combo_full, base_count = Count)
+
+# שלב 3: תוספות — אותן התראות עם תוספת אקטיביות
+added <- car_safey_combinations %>%
+  filter(alert_sum > 0, active_sum >= 1) %>%
+  select(combo_alerts, comparison_combo = combo_full, comparison_count = Count)
+
+# שלב 4: חיבור בין בסיס לתוספות לפי התראות בלבד
+comparisons <- inner_join(base, added, by = "combo_alerts") %>%
+  mutate(
+    diff = comparison_count - base_count,
+    label = paste(base_combo, "→", comparison_combo)
+  )
+
+# שלב 5: שמירת מעבר אחד לכל קומבינציית התראה עם הירידה הגדולה ביותר במספר תאונות
+top_negative_per_alert <- comparisons %>%
+  group_by(combo_alerts) %>%
+  slice_min(order_by = diff, n = 1) %>%
+  ungroup() %>%
+  arrange(diff) %>%
+  head(5)
+
+# שלב 6: המרה לפורמט ארוך, עם label מלא (base → comparison) בציר X
+top5_long <- top_negative_per_alert %>%
+  pivot_longer(
+    cols = c(base_count, comparison_count),
+    names_to = "Type",
+    values_to = "CrashCount"
+  ) %>%
+  mutate(
+    Type = recode(Type,
+                  "base_count" = "Alerts Only",
+                  "comparison_count" = "Alerts + Actives")
+  )
+
+# שלב 7: גרף עמודות עם שמות מעבר מלאים על ציר X
+ggplot(top5_long, aes(x = label, y = CrashCount, fill = Type)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = CrashCount), position = position_dodge(width = 0.9), vjust = -0.5, size = 4) +
+  labs(
+    title = "Crash Counts Before and After Adding Active Systems",
+    subtitle = "Top 5 Increases in Crashes (Same Alerts)",
+    x = "From → To (Same Alerts)",
+    y = "Crash Count",
+    fill = "System Type"
+  ) +
+  ylim(0, max(top5_long$CrashCount) * 1.1) +  # מוסיף 10% לגובה
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
 end of plotng the data
 
 -----------------------------------------------------------
