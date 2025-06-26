@@ -365,7 +365,7 @@ final_df$ActiveAdded <- recode(final_df$ActiveAdded,
 # Final unified plot
 p = ggplot(final_df, aes(x = ActiveAdded, y = RelativeChangeFromNone, color = Alert)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
-  geom_point(size = 5, aes(shape = Alert)) +
+  geom_point(size = 5) +
   labs(
     title = "Effect of Adding One Active System to Each Alert System",
     subtitle = "Each point shows change in accident rate compared to alert-only baseline",
