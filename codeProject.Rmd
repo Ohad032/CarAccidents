@@ -710,6 +710,7 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
     x = "System Addition",
     fill = "Crash Type"
   ) +
+  theme_minimal() +
   theme(
     axis.text.x = element_text(angle = 15, hjust = 1),
     legend.title = element_text(size = 13),
