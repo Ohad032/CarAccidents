@@ -233,7 +233,6 @@ p = ggplot(accidents_by_safety_count, aes(x = factor(SAFETY_COUNT), y = num_acci
     plot.background = element_rect(fill = "white", color = NA)
   )
 
-
 ggsave("Number of Accidents by Number of Safety Systems.png", p, bg = "white", width = 8, height = 6, dpi = 300)
 
 ```
@@ -453,7 +452,7 @@ p = ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
   geom_errorbar(aes(ymin = ymin, ymax = ymax), width = 0.2) +
   geom_hline(yintercept = 0, linetype = "dashed") +
   labs(
-    title = "Effect of Both Systems vs Each Alone (Normalized)",
+    title = "Effect of Both Systems vs Each Alone",
     x = "Group Comparison",
     y = "Log Odds Estimate"
   ) +
@@ -461,7 +460,7 @@ p = ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
   theme(plot.background = element_rect(fill = "white", color = NA)
         )
 
-ggsave("Effect of Both Systems vs Each Alone (Normalized).png", p, bg = "white", width = 8, height = 6, dpi = 300)
+ggsave("Effect of Both Systems vs Each Alone.png", p, bg = "white", width = 8, height = 6, dpi = 300)
 ```
 
 
@@ -690,11 +689,10 @@ p = ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType))
   theme(
     axis.text.x = element_text(angle = 15, hjust = 1),
     legend.title = element_text(size = 13),
-    legend.text = element_text(size = 8),
-    plot.background = element_rect(fill = "white", color = NA)
+    legend.text = element_text(size = 8)
   )
 
-ggsave("Percent Reduction in Crash Odds After Adding Safety Systems.png", p, bg = "white", width = 8, height = 6, dpi = 300)
+ggsave("Percent Reduction in Crash Odds After Adding Safety Systems.png", p, width = 8, height = 6, dpi = 300)
 
 ```
 
