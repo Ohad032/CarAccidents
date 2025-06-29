@@ -380,7 +380,8 @@ ggplot(final_df, aes(x = ActiveAdded, y = RelativeChangeFromNone, color = Alert)
 end of plotng the data
 
 -----------------------------------------------------------
-# modeling
+
+modeling
 
 
 ```{r}
@@ -512,7 +513,7 @@ cars_accidents_data = cars_accidents_data %>%
   )
 
 
-# logistic regression models for each collision type with interaction terms and normalize weight for each system/ combintions of systems
+# logistic regression models for each collision type with interaction terms and normalize weight for each system/combintions of systems
 model_front = glm(grepl("Front", TYPE_OF_COLLIOSION) ~
                      FRNT_COLLISION_WARNING + LANE_DEPARTURE_WARNING + BLIND_SPOT_DETECTION +
                      FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING +
@@ -716,5 +717,3 @@ ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
   )
 
 ```
-
-
