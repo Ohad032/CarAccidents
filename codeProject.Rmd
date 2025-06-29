@@ -9,7 +9,8 @@ load required libraries for data manipulation, visualization, and reporting
 library(tidyverse)
 library(broom)      
 library(knitr)      
-library(scales)    
+library(scales)
+library(dplyr)
 ```
 
 ```{r}
@@ -29,11 +30,11 @@ Preprocess the vehicle dataset to enable normalization for modeling
 ```{r}
 
 # filter and clean the vehicle dataset for modeling
-all_systems <- c(alert_systems_cols, active_systems_cols)
+all_systems = c(alert_systems_cols, active_systems_cols)
 
 
 # convert system values to numeric encoding:
-convert_system_values <- function(system_value) {
+convert_system_values = function(system_value) {
   case_when(
     is.na(system_value) ~ 0,
     tolower(system_value) %in% c("standard", "standart", "std", "available") ~ 1,
@@ -45,7 +46,7 @@ convert_system_values <- function(system_value) {
 
 set.seed(123)
 
-cars_clean_data  <- cars_data %>%
+cars_clean_data  = cars_data %>%
   filter(MODEL_YR >= 2011 & MODEL_YR <= 2023) %>%   # keep only recent model years
   mutate_at(all_systems, convert_system_values) %>%         
   mutate_at(all_systems, ~ ifelse(. == 2, sample(c(0, 1), size = length(.), replace = TRUE), .)) %>%  
@@ -59,7 +60,7 @@ cars_clean_data  <- cars_data %>%
 calculate and display the distribution of vehicles by number of installed safety systems
 ```{r}
 
-systems_by_count <- cars_clean_data %>%
+systems_by_count = cars_clean_data %>%
   mutate(system_count = rowSums(.[, all_systems] == 1)) %>%  # count how many systems are installed (value == 1)
   group_by(system_count) %>%
   summarise(
@@ -77,14 +78,14 @@ systems_by_count
 ```{r}
 
 # extract only the relevant safety system columns and convert system values to binary
-binary_system_matrix <- cars_clean_data[, all_systems]
-binary_system_matrix <- as.data.frame(lapply(binary_system_matrix, function(system_value) as.integer(system_value == 1)))
+binary_system_matrix = cars_clean_data[, all_systems]
+binary_system_matrix = as.data.frame(lapply(binary_system_matrix, function(system_value) as.integer(system_value == 1)))
 
 # create a binary string for each vehicle
-binary_system_matrix$system_combo_string <- apply(binary_system_matrix, 1, paste0, collapse = "")
+binary_system_matrix$system_combo_string = apply(binary_system_matrix, 1, paste0, collapse = "")
 
 # summarize counts and percentages of each unique combination
-system_combo_summary  <- binary_system_matrix %>%
+system_combo_summary  = binary_system_matrix %>%
   group_by(system_combo_string) %>%
   summarise(
     Count = n(),
@@ -94,13 +95,13 @@ system_combo_summary  <- binary_system_matrix %>%
   arrange(desc(Count))
 
 # split combo string into individual system columns
-combo_binary_split <- do.call(rbind, strsplit(system_combo_summary$system_combo_string, split = ""))
-combo_binary_split <- as.data.frame(combo_binary_split)
-colnames(combo_binary_split) <- all_systems
+combo_binary_split = do.call(rbind, strsplit(system_combo_summary$system_combo_string, split = ""))
+combo_binary_split = as.data.frame(combo_binary_split)
+colnames(combo_binary_split) = all_systems
 
 # combine split matrix with summary table
-car_safey_combinations <- cbind(combo_binary_split, system_combo_summary[, c("Count", "Percent")])
-car_safey_combinations <- car_safey_combinations %>%
+car_safey_combinations = cbind(combo_binary_split, system_combo_summary[, c("Count", "Percent")])
+car_safey_combinations = car_safey_combinations %>%
   mutate(across(all_of(all_systems), as.integer))
 
 car_safey_combinations
@@ -110,7 +111,7 @@ car_safey_combinations
 percentage of vehicles that include: alert systems, active systems, or both
 ```{r}
 
-GroupSummary <- cars_clean_data %>%
+GroupSummary = cars_clean_data %>%
   mutate(
     has_alert = rowSums(.[, alert_systems_cols] == 1) > 0,
     has_active = rowSums(.[, active_systems_cols] == 1) > 0,
@@ -137,14 +138,14 @@ GroupSummary
 ```{r}
 
 # extract alert system columns and convert to binary
-alert_system_matrix  <- cars_clean_data[, alert_systems_cols]
-alert_system_matrix [] <- lapply(alert_system_matrix , function(system_value) as.integer(system_value == 1))
+alert_system_matrix  = cars_clean_data[, alert_systems_cols]
+alert_system_matrix [] = lapply(alert_system_matrix , function(system_value) as.integer(system_value == 1))
 
 # create a binary string representing each alert system combination
-alert_system_matrix$alert_combo_string <- apply(alert_system_matrix , 1, paste0, collapse = "")
+alert_system_matrix$alert_combo_string = apply(alert_system_matrix , 1, paste0, collapse = "")
 
 # summarize frequency and percentage of each unique alert system combination
-alert_combo_summary <- alert_system_matrix  %>%
+alert_combo_summary = alert_system_matrix  %>%
   group_by(alert_combo_string) %>%
   summarise(
     Count = n(),
@@ -154,7 +155,7 @@ alert_combo_summary <- alert_system_matrix  %>%
   arrange(desc(Count))
 
 # create final alert system group table
-alert_system_group <- alert_combo_summary %>%
+alert_system_group = alert_combo_summary %>%
   mutate(
     BLIND_SPOT_DETECTION = as.integer(substr(alert_combo_string, 1, 1)),
     FRNT_COLLISION_WARNING = as.integer(substr(alert_combo_string, 2, 2)),
@@ -163,7 +164,7 @@ alert_system_group <- alert_combo_summary %>%
   )
 
 # reorder columns in final alert system summary table
-alert_system_group <- alert_system_group[, c("BLIND_SPOT_DETECTION", "FRNT_COLLISION_WARNING", "LANE_DEPARTURE_WARNING",  "combo_alert_systems", "Count", "alert_system_precent")]
+alert_system_group = alert_system_group[, c("BLIND_SPOT_DETECTION", "FRNT_COLLISION_WARNING", "LANE_DEPARTURE_WARNING",  "combo_alert_systems", "Count", "alert_system_precent")]
 
 ```
 
@@ -192,7 +193,7 @@ cars_accidents_data$notification_count = rowSums(cars_accidents_data[, alert_sys
 
 
 # Filter the accidents dataset to include only valid and relevant driving conditions
-cars_accidents_data <- cars_accidents_data %>%
+cars_accidents_data = cars_accidents_data %>%
   filter(
     DR_DRINK == 0, # driver was not under the influence of alcohol
     VSURCONDNAME == "Dry", # road surface condition is dry
@@ -209,7 +210,7 @@ cars_accidents_data <- cars_accidents_data %>%
 
 
 # summarize accidents by safety_count
-accidents_by_safety_count <- cars_accidents_data %>%
+accidents_by_safety_count = cars_accidents_data %>%
   group_by(SAFETY_COUNT) %>%
   summarise(num_accidents = n(), .groups = "drop") %>%
     filter(SAFETY_COUNT %in% 1:5) %>%  
@@ -221,7 +222,7 @@ accidents_by_safety_count <- cars_accidents_data %>%
   )
 
 # plot actual number of accidents
-p = ggplot(accidents_by_safety_count, aes(x = factor(SAFETY_COUNT), y = num_accidents)) +
+ggplot(accidents_by_safety_count, aes(x = factor(SAFETY_COUNT), y = num_accidents)) +
   geom_col(fill = "steelblue") +
   labs(
     title = "Number of Accidents by Number of Safety Systems",
@@ -232,16 +233,13 @@ p = ggplot(accidents_by_safety_count, aes(x = factor(SAFETY_COUNT), y = num_acci
   theme(
     plot.background = element_rect(fill = "white", color = NA)
   )
-
-ggsave("Number of Accidents by Number of Safety Systems.png", p, bg = "white", width = 8, height = 6, dpi = 300)
-
 ```
 
 ```{r}
 
 # categorize vehicles based on presence of alert/active systems, then filter to only include severe crashes with at least one system
 
-cars_accidents_data_combo_Group <- cars_accidents_data %>%
+cars_accidents_data_combo_Group = cars_accidents_data %>%
   mutate(
     has_alert = rowSums(across(all_of(alert_systems_cols)) == 1) > 0,
     has_active = rowSums(across(all_of(active_systems_cols)) == 1) > 0,
@@ -256,12 +254,12 @@ cars_accidents_data_combo_Group <- cars_accidents_data %>%
   filter(group != "None", is_severe)
 
 # summarize number of severe crashes by system group
-accident_summary <- cars_accidents_data_combo_Group %>%
+accident_summary = cars_accidents_data_combo_Group %>%
   group_by(group) %>%
   summarise(SevereCrashCount = n(), .groups = "drop")
 
 # merge with population proportions and normalize crash rate
-accident_summary <- accident_summary %>%
+accident_summary = accident_summary %>%
   inner_join(GroupSummary, by = "group") %>%
   mutate(
     PopulationShare = Percent / 100, # convert percent to proportion
@@ -270,7 +268,7 @@ accident_summary <- accident_summary %>%
   arrange(desc(NormalizedRate))
 
 # plot normalized severe crash rate by system group
-p = ggplot(accident_summary, aes(x = fct_reorder(group, NormalizedRate), y = NormalizedRate)) +
+ggplot(accident_summary, aes(x = fct_reorder(group, NormalizedRate), y = NormalizedRate)) +
   geom_col(fill = "steelblue") +
   labs(
     title = "Normalized Severe Crash Rate by System Group",
@@ -282,43 +280,39 @@ p = ggplot(accident_summary, aes(x = fct_reorder(group, NormalizedRate), y = Nor
   theme(legend.position = "none",
         plot.background = element_rect(fill = "white", color = NA)
         )
-
-ggsave("Normalized Severe Crash Rate by System Group.png", p, bg = "white", width = 8, height = 6, dpi = 300)
-
-
 ```
 
 
 ```{r}
 # Function: compute accident rates for each alert system with 0 or 1 active system
-get_alert_curve_one_active <- function(alert_col, accident_data, population_data) {
-  results <- list()
+get_alert_curve_one_active = function(alert_col, accident_data, population_data) {
+  results = list()
   
   # Only include: no active system, or exactly one at a time
-  combos <- list(NULL)  # "None"
+  combos = list(NULL)  # "None"
   for (sys in active_systems_cols) {
-    combos[[length(combos) + 1]] <- c(sys)
+    combos[[length(combos) + 1]] = c(sys)
   }
 
   for (combo in combos) {
-    combo_name <- if (length(combo) == 0) "None" else combo[1]
+    combo_name = if (length(combo) == 0) "None" else combo[1]
     
     # Filter population: this alert system + exactly this active system (no extras)
-    filtered_pop <- population_data %>%
+    filtered_pop = population_data %>%
       filter(!!sym(alert_col) == 1,
              rowSums(across(all_of(combo), ~ . == 1)) == length(combo),
              rowSums(across(all_of(setdiff(active_systems_cols, combo)), ~ . == 1)) == 0)
 
-    filtered_acc <- accident_data %>%
+    filtered_acc = accident_data %>%
       filter(!!sym(alert_col) == 1,
              rowSums(across(all_of(combo), ~ . == 1)) == length(combo),
              rowSums(across(all_of(setdiff(active_systems_cols, combo)), ~ . == 1)) == 0)
 
-    accident_rate <- if (nrow(filtered_pop) > 0) {
+    accident_rate = if (nrow(filtered_pop) > 0) {
       100 * nrow(filtered_acc) / nrow(filtered_pop)
     } else {NA}
 
-    results[[length(results) + 1]] <- data.frame(
+    results[[length(results) + 1]] = data.frame(
       Alert = alert_col,
       ActiveAdded = combo_name,
       AccidentRate = accident_rate
@@ -329,26 +323,26 @@ get_alert_curve_one_active <- function(alert_col, accident_data, population_data
 }
 
 # Create alert combination column
-cars_accidents_data$combo_alert_systems <- apply(cars_accidents_data[, alert_systems_cols], 1, paste0, collapse = "")
+cars_accidents_data$combo_alert_systems = apply(cars_accidents_data[, alert_systems_cols], 1, paste0, collapse = "")
 
 # Filter accident cases, exclude extreme alert combos
-accidents_rates <- cars_accidents_data %>%
+accidents_rates = cars_accidents_data %>%
   filter(DEFORMEDNAME %in% c("Disabling Damage", "Functional Damage")) %>%
   filter(!combo_alert_systems %in% c("000", "111"))
 
 # Run only over one-active-at-a-time combinations
-final_df <- bind_rows(lapply(alert_systems_cols, get_alert_curve_one_active,
+final_df = bind_rows(lapply(alert_systems_cols, get_alert_curve_one_active,
                              accident_data = accidents_rates,
                              population_data = cars_clean_data)) %>%
   filter(!is.na(AccidentRate))
 
 # Extract baseline when no active system was added
-baseline_df <- final_df %>%
+baseline_df = final_df %>%
   filter(ActiveAdded == "None") %>%
   select(Alert, BaselineRate = AccidentRate)
 
 # Compute relative change from baseline
-final_df <- final_df %>%
+final_df = final_df %>%
   left_join(baseline_df, by = "Alert") %>%
   mutate(
     RelativeChangeFromNone = AccidentRate - BaselineRate
@@ -356,14 +350,14 @@ final_df <- final_df %>%
   filter(ActiveAdded != "None")  # keep only additions
 
 # Rename active systems for clarity
-final_df$ActiveAdded <- recode(final_df$ActiveAdded,
+final_df$ActiveAdded = recode(final_df$ActiveAdded,
   "CRASH_IMMINENT_BRAKE" = "Crash\nImminent\nBrake",
   "DYNAMIC_BRAKE_SUPPORT" = "Dynamic\nBrake\nSupport",
   "NHTSA_ESC" = "Electronic\nStability\nControl"
 )
 
 # Final unified plot
-p = ggplot(final_df, aes(x = ActiveAdded, y = RelativeChangeFromNone, color = Alert)) +
+ggplot(final_df, aes(x = ActiveAdded, y = RelativeChangeFromNone, color = Alert)) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
   geom_point(size = 5) +
   labs(
@@ -382,8 +376,6 @@ p = ggplot(final_df, aes(x = ActiveAdded, y = RelativeChangeFromNone, color = Al
     panel.background = element_rect(fill = "white", color = NA),
     plot.background = element_rect(fill = "white", color = NA)
   )
-
-ggsave("Effect of Adding One Active System to Each Alert System.png", p, bg = "white", width = 8, height = 6, dpi = 300)
 ```
 end of plotng the data
 
@@ -394,7 +386,7 @@ end of plotng the data
 ```{r}
 
 # assign group labels and identify severe crashes
-cars_accidents_data_grouped <- cars_accidents_data %>%
+cars_accidents_data_grouped = cars_accidents_data %>%
   mutate(
     has_alert = rowSums(across(all_of(alert_systems_cols)) == 1) > 0,
     has_active = rowSums(across(all_of(active_systems_cols)) == 1) > 0,
@@ -412,42 +404,42 @@ cars_accidents_data_grouped <- cars_accidents_data %>%
   )
 
 # convert group to factor with "None" as the reference level for regression
-cars_accidents_data_grouped$group <- relevel(factor(cars_accidents_data_grouped$group), ref = "None")
+cars_accidents_data_grouped$group = relevel(factor(cars_accidents_data_grouped$group), ref = "None")
 
 
 # first model: Both vs Alerts Only
-data_both_alerts <- cars_accidents_data_grouped %>%
+data_both_alerts = cars_accidents_data_grouped %>%
   filter(group %in% c("Both", "Alerts Only")) %>%
   mutate(is_both = ifelse(group == "Both", 1, 0))
 
-model_both_vs_alerts <- glm(severe ~ is_both, data = data_both_alerts,
+model_both_vs_alerts = glm(severe ~ is_both, data = data_both_alerts,
                             weights = weight, family = "binomial")
 
-coef_both_vs_alerts <- tidy(model_both_vs_alerts) %>%
+coef_both_vs_alerts = tidy(model_both_vs_alerts) %>%
   filter(term != "(Intercept)") %>%
   mutate(Predictor = "Both vs Alerts Only")
 
 # second model: Both vs Active Only
-data_both_active <- cars_accidents_data_grouped %>%
+data_both_active = cars_accidents_data_grouped %>%
   filter(group %in% c("Both", "Active Only")) %>%
   mutate(is_both = ifelse(group == "Both", 1, 0))
 
-model_both_vs_active <- glm(severe ~ is_both, data = data_both_active,
+model_both_vs_active = glm(severe ~ is_both, data = data_both_active,
                             weights = weight, family = "binomial")
 
-coef_both_vs_active <- tidy(model_both_vs_active) %>%
+coef_both_vs_active = tidy(model_both_vs_active) %>%
   filter(term != "(Intercept)") %>%
   mutate(Predictor = "Both vs Active Only")
 
 # combine both models coefficients for visualization
-coefs_combined <- bind_rows(coef_both_vs_alerts, coef_both_vs_active) %>%
+coefs_combined = bind_rows(coef_both_vs_alerts, coef_both_vs_active) %>%
   mutate(
     ymin = estimate - 1.96 * std.error,
     ymax = estimate + 1.96 * std.error
   )
 
 # plot effect of having Both systems vs each individual system
-p = ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
+ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = ymin, ymax = ymax), width = 0.2) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -459,10 +451,41 @@ p = ggplot(coefs_combined, aes(x = Predictor, y = estimate)) +
   theme_minimal() + 
   theme(plot.background = element_rect(fill = "white", color = NA)
         )
-
-ggsave("Effect of Both Systems vs Each Alone.png", p, bg = "white", width = 8, height = 6, dpi = 300)
 ```
 
+
+```{r}
+
+# Logistic regression model with normalized weights
+model = glm(severe ~ group, data = cars_accidents_data_grouped,
+             weights = weight, family = "binomial")
+
+# Extract coefficients for Alerts Only and Active Only
+coef_df = tidy(model) %>%
+  filter(term %in% c("groupAlerts Only", "groupActive Only")) %>%
+  mutate(
+    Predictor = case_when(
+      term == "groupAlerts Only" ~ "Alerts Only vs None",
+      term == "groupActive Only" ~ "Active Only vs None"
+    ),
+    ymin = estimate - 1.96 * std.error,
+    ymax = estimate + 1.96 * std.error
+  )
+
+# Plot coefficient estimates with confidence intervals
+ggplot(coef_df, aes(x = Predictor, y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = ymin, ymax = ymax), width = 0.2) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Effect of Warning and Active Systems vs None",
+    x = "Group Comparison",
+    y = "Log Odds Estimate"
+  ) +
+  theme_minimal()
+
+
+```
 
 ```{r}
 
@@ -479,7 +502,7 @@ alert_system_group = alert_system_group %>%
 
 
 # join percentage distribution from alert system group, and compute inverse weights
-cars_accidents_data <- cars_accidents_data %>%
+cars_accidents_data = cars_accidents_data %>%
   left_join(
     alert_system_group %>% dplyr::select(combo_alert_systems, alert_system_precent),
     by = "combo_alert_systems"
@@ -624,7 +647,7 @@ model_angle_extend = glm(grepl("Angle", TYPE_OF_COLLIOSION) ~
 ```{r}
 
 # combine coefficients from all three logistic regression models
-coef_table <- bind_rows(
+coef_table = bind_rows(
   extract_coefs(model_front_extend, "Front"),
   extract_coefs(model_side_extend, "Side"),
   extract_coefs(model_angle_extend, "Angle")
@@ -642,7 +665,7 @@ coef_table <- bind_rows(
   )
 
 # filter significant effects based on p-value
-significant <- coef_table %>%
+significant = coef_table %>%
   filter(p.value < 0.05)
 
 knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)")
@@ -654,7 +677,7 @@ knitr::kable(significant, digits = 3, caption = "Significant Effects (p < 0.05)"
 
 
 # create a summary table showing odds ratio reduction after adding active safety systems
-effects_df <- data.frame(
+effects_df = data.frame(
   Comparison = c("Front + Lane -> +Dynamic_brake","Front + Blind -> +ESC"),
   From_OR = exp(c(model_front$coefficients["FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING"], model_angle$coefficients["FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION"])),
   To_OR = exp(c(model_front_extend$coefficients["FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT"], model_angle_extend$coefficients["FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:NHTSA_ESC"])),
@@ -668,7 +691,7 @@ effects_df <- data.frame(
 colors = c("Front" = "indianred" ,  "Angle" = "steelblue")
 
 # plot the percent reduction in odds 
-p = ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
+ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType)) +
   geom_bar(stat = "identity", width = 0.5) +
   geom_text(
     aes(label = paste0(round(PercentChange, 1), "%")),
@@ -691,8 +714,6 @@ p = ggplot(effects_df, aes(x = Comparison, y = PercentChange, fill = CrashType))
     legend.title = element_text(size = 13),
     legend.text = element_text(size = 8)
   )
-
-ggsave("Percent Reduction in Crash Odds After Adding Safety Systems.png", p, width = 8, height = 6, dpi = 300)
 
 ```
 
