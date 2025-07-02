@@ -1,4 +1,4 @@
-# Project data description
+# Project Data Description
 ## Crash Risk and Vehicle Safety Systems
 Final project in Advanced Data Analysis in R course
 
