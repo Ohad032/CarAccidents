@@ -24,6 +24,7 @@ Insights from this study may support improved safety design and data-driven tran
   - Pre-crash events  
   - Driver and environmental conditions  
   - Safety systems
+    
 `CarsDataNew.csv` - This dataset, which includes vehicle-only information, was used to normalize specific safety system groups according to their prevalence in the overall vehicle population. There is no need to detail its fields here, as they are already included in the merged vehicle–crash dataset.
 
 ## Variable Groups and Descriptions
