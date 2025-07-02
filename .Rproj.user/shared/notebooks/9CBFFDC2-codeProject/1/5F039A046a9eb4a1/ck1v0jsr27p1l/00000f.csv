@@ -1,4 +1,0 @@
-"0",""
-"0","CarsAccidentsData = read.csv(""data/CarsAccidentsData.csv"")"
-"0","notification_cols <- c(""FRNT_COLLISION_WARNING"", ""LANE_DEPARTURE_WARNING"", ""BLIND_SPOT_DETECTION"")"
-"0",""

@@ -1,8 +1,0 @@
-"0",""
-"0","cars_accidents_data = read.csv(""data/CarsAccidentsData.csv"")"
-"0","cars_data = read.csv(""data/CarsDatanew.csv"")"
-"0",""
-"0","alert_systems_cols = c(""BLIND_SPOT_DETECTION"",""FRNT_COLLISION_WARNING"", ""LANE_DEPARTURE_WARNING"")"
-"0","active_systems_cols = c(""CRASH_IMMINENT_BRAKE"", ""DYNAMIC_BRAKE_SUPPORT"", ""NHTSA_ESC"")"
-"0",""
-"0",""
