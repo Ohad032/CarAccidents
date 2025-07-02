@@ -1,7 +1,7 @@
 # Crash Risk and Vehicle Safety Systems
 Final project in Advanced Data Analysis in R course
 
-Team name – Shelly Kritsberg, Noa Segev, Ohad Motola, Roee Seri
+Team name: Shelly Kritsberg, Noa Segev, Ohad Motola, Roee Seri
 
 This markdown file describes the structure of the data and analysis workflow.
 To reproduce the code, place the files CarsAccidentsData.csv and CarsDatanew.csv in the project directory and run the R Markdown script.
