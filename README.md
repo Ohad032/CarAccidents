@@ -1,8 +1,3 @@
----
-title: "README - CarsAccidentsData.csv"
-output: html_document
----
-
 ## Dataset Overview
 
 - **Filename**: `CarsAccidentsData.csv`  
