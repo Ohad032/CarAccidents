@@ -1,0 +1,42 @@
+"0","install.packages(""MASS"")"
+"2","G2;H2;WARNINGh: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+g"
+"2","G3;Installing package into ‘C:/Users/ohad0/AppData/Local/R/win-library/4.4’
+(as ‘lib’ is unspecified)
+g"
+"2","trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/MASS_7.3-65.zip'
+"
+"2","Content type 'application/zip' length 1175166 bytes (1.1 MB)
+"
+"2","downloaded 1.1 MB
+
+"
+"1","package ‘MASS’ successfully unpacked and MD5 sums checked
+"
+"1","
+The downloaded binary packages are in
+	C:\Users\ohad0\AppData\Local\Temp\RtmpikXWGF\downloaded_packages
+"
+"0","install.packages(""nnet"")  # אם לא מותקן"
+"2","G2;H2;WARNINGh: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+g"
+"2","G3;Installing package into ‘C:/Users/ohad0/AppData/Local/R/win-library/4.4’
+(as ‘lib’ is unspecified)
+g"
+"2","G2;trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.4/nnet_7.3-20.zip'
+g"
+"2","Content type 'application/zip' length 123630 bytes (120 KB)
+"
+"2","downloaded 120 KB
+
+"
+"1","package ‘nnet’ successfully unpacked and MD5 sums checked
+"
+"1","
+The downloaded binary packages are in
+	C:\Users\ohad0\AppData\Local\Temp\RtmpikXWGF\downloaded_packages
+"
