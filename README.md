@@ -1,4 +1,4 @@
-#### Crash Risk and Vehicle Safety Systems
+# Crash Risk and Vehicle Safety Systems
 Final project in Advanced Data Analysis in R course
 
 Team name – Shelly Kritsberg, Noa Segev, Ohad Motola, Roee Seri
