@@ -1,0 +1,30 @@
+"0","library(dplyr)"
+"2","G2;H2;Warningh: package ‘dplyr’ was built under R version 4.4.3g
+"
+"2","G3;
+Attaching package: ‘dplyr’
+
+g"
+"2","G3;The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+g"
+"2","G3;The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+g"
+"0","library(ggplot2)"
+"2","G2;H2;Warningh: package ‘ggplot2’ was built under R version 4.4.3g
+"
+"0","library(tidyr)"
+"2","G2;H2;Warningh: package ‘tidyr’ was built under R version 4.4.3g
+"
+"0","library(broom)"
+"2","G2;H2;Warningh: package ‘broom’ was built under R version 4.4.3g
+"
+"0","library(knitr)"
+"0","library(readr)"
+"2","G2;H2;Warningh: package ‘readr’ was built under R version 4.4.3g
+"

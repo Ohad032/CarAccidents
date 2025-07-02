@@ -1,0 +1,24 @@
+"0","model_front_extend = glm(grepl(""Front"", TYPE_OF_COLLIOSION) ~"
+"0","                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + # 011100"
+"0","                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:DYNAMIC_BRAKE_SUPPORT + # 011010"
+"0","                     FRNT_COLLISION_WARNING:BLIND_SPOT_DETECTION:CRASH_IMMINENT_BRAKE, # 110100"
+"0","                   data = cars_accidents_data, family = ""binomial"", weights = weight_all_systems)"
+"2","G2;H2;Warningh in eval(family$initialize) :
+  non-integer #successes in a binomial glm!g
+"
+"0","model_side_extend = glm(grepl(""Side"", TYPE_OF_COLLIOSION) ~"
+"0","                    BLIND_SPOT_DETECTION:NHTSA_ESC + # 100001"
+"0","                    FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:NHTSA_ESC,# 011001"
+"0","                  data = cars_accidents_data, family = ""binomial"", weights = weight_all_systems)"
+"2","G2;H2;Warningh in eval(family$initialize) :
+  non-integer #successes in a binomial glm!g
+"
+"0","model_angle_extend = glm(grepl(""Angle"", TYPE_OF_COLLIOSION) ~"
+"0","                     FRNT_COLLISION_WARNING:CRASH_IMMINENT_BRAKE + # 010100"
+"0","                     FRNT_COLLISION_WARNING:DYNAMIC_BRAKE_SUPPORT + # 010010"
+"0","                     FRNT_COLLISION_WARNING:LANE_DEPARTURE_WARNING:CRASH_IMMINENT_BRAKE + # 011100"
+"0","                     BLIND_SPOT_DETECTION:FRNT_COLLISION_WARNING:NHTSA_ESC, # 110001"
+"0","                   data = cars_accidents_data, family = ""binomial"", weights = weight_all_systems)"
+"2","G2;H2;Warningh in eval(family$initialize) :
+  non-integer #successes in a binomial glm!g
+"
