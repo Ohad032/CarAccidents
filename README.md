@@ -29,26 +29,26 @@ Insights from this study may support improved safety design and data-driven tran
 
 ### Vehicle Information
 
-- `VPICMAKENAME`, `VPICMODELNAME`, `MOD_YEAR` – Make, model, and year of manufacture.  
-- `BODY_STYLE` – Vehicle body type (e.g., SUV, 4 DR, 2 DR, PU/CC).
+- `VPICMAKENAME`, `VPICMODELNAME`, `MOD_YEAR` - Make, model, and year of manufacture.  
+- `BODY_STYLE` - Vehicle body type (e.g., SUV, 4 DR, 2 DR, PU/CC).
 
 ### Crash Characteristics
 
-- `SERIAL_CRASH` – Unique identifier of the crash incident.  
-- `HARM_EV`, `HARM_EVNAME` – First harmful event code and its description.  
-- `TYPE_OF_COLLIOSION` – Collision type (e.g., Angle, Front-to-Rear).  
-- `TRAV_SP` – Vehicle speed at the time of crash (in mph).  
+- `SERIAL_CRASH` - Unique identifier of the crash incident.  
+- `HARM_EV`, `HARM_EVNAME` - First harmful event code and its description.  
+- `TYPE_OF_COLLIOSION` - Collision type (e.g., Angle, Front-to-Rear).  
+- `TRAV_SP` - Vehicle speed at the time of crash (in mph).  
 - `VSPD_LIM` – Posted speed limit at the crash location (in mph).  
-- `DEFORMEDNAME` – Level of damage to the vehicle.  
-- `DEATHS` – Number of fatalities in the vehicle.
+- `DEFORMEDNAME` - Level of damage to the vehicle.  
+- `DEATHS` - Number of fatalities in the vehicle.
 
 ### Driver and Licensing
 
-- `IS_DRIVER_PRESENT` – Indicates whether a driver was present (1 = Yes).  
-- `DR_DRINK` – Indicates whether the driver consumed alcohol (1 = Yes).  
-- `L_TYPENAME` – Type of driver’s license (e.g., Full Driver License).  
-- `L_STATUSNAME` – License status (e.g., Valid, Suspended).  
-- `SPEEDRELNAME` – Relation to speed limit (e.g., Exceeded Speed Limit).
+- `IS_DRIVER_PRESENT` - Indicates whether a driver was present (1 = Yes).  
+- `DR_DRINK` - Indicates whether the driver consumed alcohol (1 = Yes).  
+- `L_TYPENAME` - Type of driver’s license (e.g., Full Driver License).  
+- `L_STATUSNAME` - License status (e.g., Valid, Suspended).  
+- `SPEEDRELNAME` - Relation to speed limit (e.g., Exceeded Speed Limit).
 
 ### Environmental Conditions
 
@@ -57,7 +57,7 @@ Insights from this study may support improved safety design and data-driven tran
 
 ### Pre-Crash Events
 
-- `P_CRASH1NAME` to `PCRASH5NAME` – Sequence of events prior to the crash (e.g., Turning Left, Departed Roadway).
+- `P_CRASH1NAME` to `PCRASH5NAME` - Sequence of events prior to the crash (e.g., Turning Left, Departed Roadway).
 
 ### Safety Features
 
@@ -73,9 +73,9 @@ Variables:
 - `FRNT_COLLISION_WARNING`  
 - `CRASH_IMMINENT_BRAKE`  
 - `DYNAMIC_BRAKE_SUPPORT`  
-- `ARS` – Automatic Rollover System  
-- `NHTSA_ESC` – Electronic Stability Control  
-- `SAFETY_COUNT` – Number of safety technologies present in the vehicle.
+- `ARS` - Automatic Rollover System  
+- `NHTSA_ESC` - Electronic Stability Control  
+- `SAFETY_COUNT` - Number of safety technologies present in the vehicle.
 
 ## Notes
 
