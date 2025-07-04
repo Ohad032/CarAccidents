@@ -40,7 +40,7 @@ Insights from this study may support improved safety design and data-driven tran
 - `HARM_EV`, `HARM_EVNAME` - First harmful event code and its description.  
 - `TYPE_OF_COLLIOSION` - Collision type (e.g., Angle, Front-to-Rear).  
 - `TRAV_SP` - Vehicle speed at the time of crash (in mph).  
-- `VSPD_LIM` – Posted speed limit at the crash location (in mph).  
+- `VSPD_LIM` - Posted speed limit at the crash location (in mph).  
 - `DEFORMEDNAME` - Level of damage to the vehicle.  
 - `DEATHS` - Number of fatalities in the vehicle.
 
